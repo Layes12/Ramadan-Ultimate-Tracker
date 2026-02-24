@@ -6,159 +6,7 @@
 <title>Ramadan Study Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&family=Hind+Siliguri:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
-// ============================================================
-// 🎵 SOUND ENGINE (Web Audio API — no external files needed)
-// ============================================================
-let audioCtx = null;
-function getAudioCtx(){
-  if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
-  return audioCtx;
-}
-function playTone(freq,type,duration,gain=0.18,fadeOut=true){
-  const ctx=getAudioCtx();if(!ctx)return;
-  try{
-    if(ctx.state==='suspended')ctx.resume();
-    const osc=ctx.createOscillator();const vol=ctx.createGain();
-    osc.connect(vol);vol.connect(ctx.destination);
-    osc.type=type;osc.frequency.setValueAtTime(freq,ctx.currentTime);
-    vol.gain.setValueAtTime(gain,ctx.currentTime);
-    if(fadeOut)vol.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
-    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duration);
-  }catch(e){}
-}
-function playSound(type){
-  if(!audioCtx&&type!=='start'&&type!=='complete'){
-    // Only init on user interaction
-  }
-  switch(type){
-    case 'tap':
-      playTone(600,'sine',0.06,0.12);
-      break;
-    case 'start':
-      playTone(440,'sine',0.1,0.15);
-      setTimeout(()=>playTone(554,'sine',0.12,0.15),80);
-      setTimeout(()=>playTone(660,'sine',0.15,0.15),160);
-      break;
-    case 'stop':
-      playTone(500,'sine',0.15,0.15);
-      setTimeout(()=>playTone(400,'sine',0.2,0.12),100);
-      break;
-    case 'complete':
-      // Victory fanfare
-      [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',0.25,0.2),i*100));
-      setTimeout(()=>playTone(1047,'triangle',0.5,0.18),450);
-      break;
-    case 'pop':
-      playTone(800,'sine',0.05,0.1,true);
-      break;
-    case 'log':
-      playTone(440,'sine',0.08,0.12);
-      setTimeout(()=>playTone(550,'sine',0.1,0.1),60);
-      break;
-  }
-}
-
-// ============================================================
-// 📳 HAPTIC FEEDBACK
-// ============================================================
-function triggerHaptic(style='light'){
-  if(!navigator.vibrate)return;
-  switch(style){
-    case 'light':navigator.vibrate(8);break;
-    case 'medium':navigator.vibrate(15);break;
-    case 'heavy':navigator.vibrate([20,10,20]);break;
-    case 'success':navigator.vibrate([10,30,10,30,50]);break;
-    case 'error':navigator.vibrate([50,20,50]);break;
-  }
-}
-
-// ============================================================
-// 🎊 CONFETTI ENGINE
-// ============================================================
-(function(){
-  const COLORS=['#e8a832','#4dbe8c','#5b8dee','#e85c5c','#f472b6','#a3e635','#38bdf8','#fbbf24'];
-  let particles=[];let animId=null;let canvas=null;let ctx2=null;
-
-  function ensureCanvas(){
-    if(canvas)return;
-    canvas=document.createElement('canvas');
-    canvas.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999';
-    document.body.appendChild(canvas);
-    ctx2=canvas.getContext('2d');
-    window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
-    canvas.width=window.innerWidth;canvas.height=window.innerHeight;
-  }
-
-  window.launchConfetti=function(x,y){
-    ensureCanvas();
-    const count=60;
-    for(let i=0;i<count;i++){
-      particles.push({
-        x:x||window.innerWidth/2,
-        y:y||window.innerHeight*0.4,
-        vx:(Math.random()-0.5)*14,
-        vy:(Math.random()*-14)-4,
-        color:COLORS[Math.floor(Math.random()*COLORS.length)],
-        size:Math.random()*7+4,
-        rotation:Math.random()*360,
-        rotSpeed:(Math.random()-0.5)*12,
-        gravity:0.45,
-        opacity:1,
-        shape:Math.random()>0.5?'rect':'circle'
-      });
-    }
-    if(!animId)animConfetti();
-  };
-
-  function animConfetti(){
-    ctx2.clearRect(0,0,canvas.width,canvas.height);
-    particles=particles.filter(p=>p.opacity>0.02);
-    particles.forEach(p=>{
-      p.x+=p.vx;p.y+=p.vy;p.vy+=p.gravity;
-      p.vx*=0.99;p.rotation+=p.rotSpeed;p.opacity-=0.013;
-      ctx2.save();ctx2.globalAlpha=Math.max(0,p.opacity);ctx2.fillStyle=p.color;
-      ctx2.translate(p.x,p.y);ctx2.rotate(p.rotation*Math.PI/180);
-      if(p.shape==='circle'){ctx2.beginPath();ctx2.arc(0,0,p.size/2,0,Math.PI*2);ctx2.fill();}
-      else{ctx2.fillRect(-p.size/2,-p.size/3,p.size,p.size*0.6);}
-      ctx2.restore();
-    });
-    if(particles.length>0){animId=requestAnimationFrame(animConfetti);}
-    else{animId=null;ctx2.clearRect(0,0,canvas.width,canvas.height);}
-  }
-})();
-
-// ============================================================
-// ✅ TASK COMPLETE CELEBRATION
-// ============================================================
-function celebrateTaskComplete(taskName){
-  // Confetti burst
-  launchConfetti();
-  // Sound
-  playSound('complete');
-  // Haptic
-  triggerHaptic('success');
-  // Toast notification
-  showToast(,'success');
-}
-
-function showToast(msg,type='info'){
-  const existing=document.getElementById('toast-container');
-  if(existing)existing.remove();
-  const div=document.createElement('div');
-  div.id='toast-container';
-  div.style.cssText=`position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:8000;pointer-events:none`;
-  const bg=type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--accent)';
-  div.innerHTML=`<div style="background:${bg};color:#000;padding:10px 20px;border-radius:20px;font-size:.82rem;font-weight:600;font-family:var(--font);box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap;animation:toastIn .25s ease">${msg}</div>`;
-  document.body.appendChild(div);
-  setTimeout(()=>{div.style.opacity='0';div.style.transition='opacity .3s';setTimeout(()=>div.remove(),300);},2500);
-}
-
-// Add toast animation to head
-const toastStyle=document.createElement('style');
-toastStyle.textContent=`@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`;
-document.head.appendChild(toastStyle);
-</script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -2415,6 +2263,135 @@ auth.onAuthStateChanged(async (user)=>{
     renderLogin();
   }
 });
+}
+
+// ============================================================
+// SOUND ENGINE (Web Audio API)
+// ============================================================
+var audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+  return audioCtx;
+}
+function playTone(freq,type,duration,gain,fadeOut){
+  gain=gain||0.15; fadeOut=fadeOut!==false;
+  var ctx=getAudioCtx();if(!ctx)return;
+  try{
+    if(ctx.state==='suspended')ctx.resume();
+    var osc=ctx.createOscillator();var vol=ctx.createGain();
+    osc.connect(vol);vol.connect(ctx.destination);
+    osc.type=type||'sine';osc.frequency.setValueAtTime(freq,ctx.currentTime);
+    vol.gain.setValueAtTime(gain,ctx.currentTime);
+    if(fadeOut)vol.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
+    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duration);
+  }catch(e){}
+}
+function playSound(type){
+  switch(type){
+    case 'tap': playTone(600,'sine',0.06,0.1); break;
+    case 'start':
+      playTone(440,'sine',0.1,0.15);
+      setTimeout(function(){playTone(554,'sine',0.12,0.15);},80);
+      setTimeout(function(){playTone(660,'sine',0.15,0.15);},160);
+      break;
+    case 'stop':
+      playTone(500,'sine',0.15,0.15);
+      setTimeout(function(){playTone(400,'sine',0.2,0.12);},100);
+      break;
+    case 'complete':
+      [523,659,784,1047].forEach(function(f,i){setTimeout(function(){playTone(f,'sine',0.25,0.2);},i*100);});
+      setTimeout(function(){playTone(1047,'triangle',0.5,0.18);},450);
+      break;
+    case 'pop': playTone(800,'sine',0.05,0.1); break;
+    case 'log':
+      playTone(440,'sine',0.08,0.12);
+      setTimeout(function(){playTone(550,'sine',0.1,0.1);},60);
+      break;
+  }
+}
+
+// ============================================================
+// HAPTIC FEEDBACK
+// ============================================================
+function triggerHaptic(style){
+  if(!navigator.vibrate)return;
+  if(style==='light')navigator.vibrate(8);
+  else if(style==='medium')navigator.vibrate(15);
+  else if(style==='heavy')navigator.vibrate([20,10,20]);
+  else if(style==='success')navigator.vibrate([10,30,10,30,50]);
+  else if(style==='error')navigator.vibrate([50,20,50]);
+}
+
+// ============================================================
+// CONFETTI ENGINE
+// ============================================================
+(function(){
+  var COLORS=['#e8a832','#4dbe8c','#5b8dee','#e85c5c','#f472b6','#a3e635','#38bdf8','#fbbf24'];
+  var particles=[];var animId=null;var canvas=null;var ctx2=null;
+  function ensureCanvas(){
+    if(canvas)return;
+    canvas=document.createElement('canvas');
+    canvas.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999';
+    document.body.appendChild(canvas);
+    ctx2=canvas.getContext('2d');
+    window.addEventListener('resize',function(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+    canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  }
+  window.launchConfetti=function(x,y){
+    ensureCanvas();
+    for(var i=0;i<60;i++){
+      particles.push({
+        x:x||window.innerWidth/2, y:y||window.innerHeight*0.4,
+        vx:(Math.random()-0.5)*14, vy:(Math.random()*-14)-4,
+        color:COLORS[Math.floor(Math.random()*COLORS.length)],
+        size:Math.random()*7+4, rotation:Math.random()*360,
+        rotSpeed:(Math.random()-0.5)*12, gravity:0.45, opacity:1,
+        shape:Math.random()>0.5?'rect':'circle'
+      });
+    }
+    if(!animId)animConfetti();
+  };
+  function animConfetti(){
+    ctx2.clearRect(0,0,canvas.width,canvas.height);
+    particles=particles.filter(function(p){return p.opacity>0.02;});
+    particles.forEach(function(p){
+      p.x+=p.vx;p.y+=p.vy;p.vy+=p.gravity;
+      p.vx*=0.99;p.rotation+=p.rotSpeed;p.opacity-=0.013;
+      ctx2.save();ctx2.globalAlpha=Math.max(0,p.opacity);ctx2.fillStyle=p.color;
+      ctx2.translate(p.x,p.y);ctx2.rotate(p.rotation*Math.PI/180);
+      if(p.shape==='circle'){ctx2.beginPath();ctx2.arc(0,0,p.size/2,0,Math.PI*2);ctx2.fill();}
+      else{ctx2.fillRect(-p.size/2,-p.size/3,p.size,p.size*0.6);}
+      ctx2.restore();
+    });
+    if(particles.length>0){animId=requestAnimationFrame(animConfetti);}
+    else{animId=null;ctx2.clearRect(0,0,canvas.width,canvas.height);}
+  }
+})();
+
+// ============================================================
+// TOAST & CELEBRATION
+// ============================================================
+function showToast(msg,type){
+  type=type||'info';
+  var existing=document.getElementById('toast-container');
+  if(existing)existing.remove();
+  var div=document.createElement('div');
+  div.id='toast-container';
+  div.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:8000;pointer-events:none';
+  var bg=type==='success'?'#4dbe8c':type==='error'?'#e85c5c':'#e8a832';
+  var msgSafe=msg.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  div.innerHTML='<div style="background:'+bg+';color:#000;padding:10px 20px;border-radius:20px;font-size:.82rem;font-weight:600;font-family:sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.4);white-space:nowrap;animation:toastIn .25s ease">'+msgSafe+'</div>';
+  var style=document.createElement('style');
+  style.textContent='@keyframes toastIn{from{opacity:0;transform:translateY(12px) translateX(-50%)}to{opacity:1;transform:translateY(0) translateX(-50%)}}';
+  div.appendChild(style);
+  document.body.appendChild(div);
+  setTimeout(function(){div.style.opacity='0';div.style.transition='opacity .3s';setTimeout(function(){div.remove();},300);},2500);
+}
+function celebrateTaskComplete(taskName){
+  launchConfetti();
+  playSound('complete');
+  triggerHaptic('success');
+  showToast('Completed: '+taskName,'success');
 }
 </script>
 </body>
