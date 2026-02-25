@@ -598,7 +598,9 @@ function studyStartDay(){return state.settings.studyStartDay||1;}
 function studyEndDay(){return state.settings.studyEndDay||30;}
 function daysRemaining(){
   const cur=todayRamadanDay();if(!cur)return studyEndDay()-studyStartDay();
-  return Math.max(0,studyEndDay()-cur);
+  // If study hasn't started yet, count from studyStartDay, not today
+  const effectiveStart=Math.max(cur,studyStartDay());
+  return Math.max(0,studyEndDay()-effectiveStart);
 }
 function getSubject(id){return state.subjects.find(s=>s.id===id)||{name:'Unknown',color:'#888',id}}
 function getTask(id){return state.tasks.find(t=>t.id===id)}
