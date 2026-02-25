@@ -796,9 +796,9 @@ function getPriorityScore(task){
   return final;
 }
 function generateDailyQueue(){
+  // Full ranked list (used by Tasks view and skip replacement)
   const tasks=state.tasks.filter(incomplete);
   const scored=tasks.map(t=>({...t,_score:getPriorityScore(t)}));
-  // Pin deadline tasks ≤5 days first
   const pinned=scored.filter(t=>t.isDeadlineTask&&t.deadlineDate&&Math.ceil((new Date(t.deadlineDate)-new Date())/86400000)<=5).sort((a,b)=>{
     const da=Math.ceil((new Date(a.deadlineDate)-new Date())/86400000);
     const db2=Math.ceil((new Date(b.deadlineDate)-new Date())/86400000);
@@ -807,6 +807,46 @@ function generateDailyQueue(){
   const pinnedIds=new Set(pinned.map(t=>t.id));
   const rest=scored.filter(t=>!pinnedIds.has(t.id)).sort((a,b)=>b._score-a._score);
   return[...pinned,...rest];
+}
+
+// Skipped task IDs for tonight (resets on new day)
+if(!state.skippedTonight)state.skippedTonight={day:null,ids:new Set()};
+function getTonightSkipped(){
+  const today=todayRamadanDay();
+  if(state.skippedTonight.day!==today){state.skippedTonight={day:today,ids:new Set()};}
+  return state.skippedTonight.ids;
+}
+
+function generateTonightQueue(){
+  // Build a capped queue that fills up to (target - already studied tonight)
+  const target=state.settings.dailyTargetMinutes||480;
+  const alreadyDone=getTonightSessionMinutes();
+  const budget=Math.max(0,target-alreadyDone);
+  const skipped=getTonightSkipped();
+  const full=generateDailyQueue().filter(t=>!skipped.has(t.id));
+  // Fill up to budget, always include pinned deadline tasks regardless
+  const queue=[];let acc=0;
+  for(const t of full){
+    const rem=Math.max(1,Math.round((t.estimatedMinutes||30)*(getCalibrationCoefficient(t.subjectId)||1)-taskActualMin(t.id)));
+    const isPinned=t.isDeadlineTask&&t.deadlineDate&&Math.ceil((new Date(t.deadlineDate)-new Date())/86400000)<=5;
+    if(isPinned||acc<budget){
+      queue.push(t);
+      acc+=rem;
+    }
+    if(acc>=budget*1.1&&!isPinned)break; // slight overrun ok, stop after
+  }
+  return{queue,full,budget};
+}
+
+function skipTonightTask(taskId){
+  getTonightSkipped().add(taskId);
+  playSound('tap');triggerHaptic('light');
+  showToast('Task moved to next session','info');
+  renderDaily();
+}
+function clearSkipped(){
+  if(state.skippedTonight)state.skippedTonight.ids=new Set();
+  renderDaily();
 }
 
 // ============================================================
@@ -930,11 +970,12 @@ function renderDaily(){
   const totalHrs=getTotalHoursRemaining();
   const dr=daysRemaining();
   const reqHrs=getRequiredDailyHours();
-  const reqClass=reqHrs<7?'green':reqHrs<9?'amber':'red';
+  const targetHrs=(state.settings.dailyTargetMinutes||480)/60;
+  const reqClass=reqHrs<=targetHrs?'green':reqHrs<=targetHrs*1.15?'amber':'red';
   const target=((state.settings.dailyTargetMinutes)||480);
   const tonightMin=getTonightSessionMinutes();
   const tonightProg=Math.min(100,(tonightMin/target)*100);
-  const queue=generateDailyQueue();
+  const {queue,full,budget}=generateTonightQueue();
   const avoided=getAvoidedSubjects();
   const dlAlerts=getDeadlineAlerts();
   const curDay=todayRamadanDay();
@@ -1022,21 +1063,28 @@ function renderDaily(){
   html+=`</div>`;
 
   // Queue
+  const skippedCount=getTonightSkipped().size;
   html+=`<div class="queue-header">
-    <div class="queue-title">Tonight's Queue</div>
+    <div class="queue-title">Tonight's Queue <span style="font-size:.72rem;color:var(--text3);font-weight:400">${queue.length} tasks · ${formatMin(Math.round(budget))} budget</span></div>
     <div class="queue-actions">
+      ${skippedCount?`<button class="btn btn-sm btn-ghost" onclick="clearSkipped()" style="font-size:.7rem">↺ Restore ${skippedCount} skipped</button>`:''}
       <button class="btn btn-sm btn-ghost" onclick="showAddTaskModal()">+ Add Task</button>
     </div>
   </div>`;
 
-  if(!queue.length){
+  if(!queue.length&&!full.length){
     html+=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>All tasks complete! Amazing work 🎉</p></div>`;
+  }else if(!queue.length){
+    html+=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><p>Tonight's target hit! 🎉 <button class="btn btn-ghost btn-sm" onclick="clearSkipped();renderDaily()" style="margin-top:8px">See more tasks</button></p></div>`;
   }else{
-    queue.slice(0,20).forEach(task=>{
-      html+=renderTaskCard(task,true);
+    queue.forEach(task=>{
+      html+=renderTaskCard(task,true,true);
     });
-    if(queue.length>20){
-      html+=`<div class="load-more"><button class="btn btn-ghost btn-sm" onclick="navigate('tasks')">View all ${queue.length} tasks →</button></div>`;
+    if(full.length>queue.length){
+      html+=`<div class="load-more" style="flex-direction:column;gap:6px">
+        <span style="font-size:.72rem;color:var(--text3)">${full.length-queue.length} more tasks queued for future sessions</span>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('tasks')">View all tasks →</button>
+      </div>`;
     }
   }
   el.innerHTML=html;
@@ -1047,7 +1095,7 @@ function renderDaily(){
   }
 }
 
-function renderTaskCard(task,showStart=false){
+function renderTaskCard(task,showStart=false,showSkip=false){
   const subj=getSubject(task.subjectId);
   const actual=taskActualMin(task.id);
   const coeff=getCalibrationCoefficient(task.subjectId);
@@ -1092,6 +1140,7 @@ function renderTaskCard(task,showStart=false){
         ${actionBtn}
         <button class="btn-icon" onclick="showLogSessionModal('${task.id}')" title="Log session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
         <button class="btn-icon" onclick="showEditTaskModal('${task.id}')" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        ${showSkip&&!isActive?`<button class="btn-icon" onclick="event.stopPropagation();skipTonightTask('${task.id}')" title="Skip tonight" style="color:var(--text3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></button>`:''}
       </div>
     </div>
     <div class="task-card-bottom">
