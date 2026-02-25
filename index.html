@@ -13,22 +13,29 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
---bg:#0c0c0e;--surface:#131316;--surface2:#1a1a1f;--surface3:#222228;
---border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+--bg:#080810;--surface:rgba(255,255,255,0.04);--surface2:rgba(255,255,255,0.07);--surface3:rgba(255,255,255,0.1);
+--surface-solid:#0f0f18;--surface2-solid:#161622;--surface3-solid:#1e1e2e;
+--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
 --text:#f0efe8;--text2:#9898a4;--text3:#5a5a64;
---accent:#e8a832;--accent2:rgba(232,168,50,0.15);--accent3:rgba(232,168,50,0.08);
+--accent:#e8a832;--accent-r:232;--accent-g:168;--accent-b:50;
+--accent2:rgba(232,168,50,0.15);--accent3:rgba(232,168,50,0.08);
 --green:#4dbe8c;--green2:rgba(77,190,140,0.15);
 --red:#e85c5c;--red2:rgba(232,92,92,0.15);
 --amber:#f0c040;--amber2:rgba(240,192,64,0.15);
---radius:10px;--radius2:14px;--radius3:18px;
+--radius:12px;--radius2:16px;--radius3:22px;
+--glass:rgba(255,255,255,0.05);--glass-border:rgba(255,255,255,0.1);
+--glow:rgba(232,168,50,0.15);
 --nav-w:220px;--nav-h:60px;
 --font:'Instrument Sans',-apple-system,sans-serif;
 --font-head:'Bricolage Grotesque',-apple-system,sans-serif;
 --font-mono:'JetBrains Mono',monospace;
 --font-bn:'Hind Siliguri','Instrument Sans',sans-serif;
+--transition:.18s cubic-bezier(.4,0,.2,1);
 }
 html{font-size:15px;-webkit-font-smoothing:antialiased}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% -10%,rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.06) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 110%,rgba(77,190,140,0.04) 0%,transparent 60%);pointer-events:none;z-index:0}
+body>*{position:relative;z-index:1}
 
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px}
@@ -45,7 +52,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .app-layout{display:flex;min-height:100vh}
 
 /* SIDEBAR */
-.sidebar{width:var(--nav-w);background:var(--surface);border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;transition:transform .2s}
+.sidebar{width:var(--nav-w);background:rgba(8,8,16,0.85);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border-right:1px solid var(--glass-border);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;transition:transform .2s}
 .sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
 .sidebar-logo .logo-text{font-family:var(--font-head);font-size:1.1rem;font-weight:700;color:var(--text)}
 .sidebar-logo .logo-sub{font-size:.72rem;color:var(--text3);font-family:var(--font-mono);letter-spacing:.05em;margin-top:2px}
@@ -72,14 +79,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .view-title{font-family:var(--font-head);font-size:1.5rem;font-weight:700;color:var(--text)}
 .view-subtitle{font-size:.82rem;color:var(--text3);margin-top:4px}
 
-/* CARDS */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:20px}
+/* CARDS - Glass morphism */
+.card{background:var(--glass);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid var(--glass-border);border-radius:var(--radius2);padding:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.06)}
 .card-sm{padding:14px 16px}
 .card-title{font-size:.78rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
 
 /* METRICS ROW */
 .metrics-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
-.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:18px 20px;position:relative;overflow:hidden}
+.metric-card{background:var(--glass);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid var(--glass-border);border-radius:var(--radius2);padding:18px 20px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.25),inset 0 1px 0 rgba(255,255,255,0.06);transition:transform var(--transition),box-shadow var(--transition)}
+.metric-card:hover{transform:translateY(-1px);box-shadow:0 8px 32px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.08)}
 .metric-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:2px}
 .metric-card.green::after{background:var(--green)}
 .metric-card.amber::after{background:var(--amber)}
@@ -93,7 +101,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .metric-sub{font-size:.72rem;color:var(--text3)}
 
 /* PROGRESS BAR */
-.progress-bar-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:16px 20px;margin-bottom:16px}
+.progress-bar-wrap{background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:var(--radius2);padding:16px 20px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,0.2)}
 .progress-bar-label{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;color:var(--text2);margin-bottom:10px}
 .progress-bar-label span:last-child{font-family:var(--font-mono);font-size:.78rem;color:var(--text3)}
 .progress-bar{height:6px;background:var(--surface3);border-radius:3px;overflow:hidden}
@@ -114,8 +122,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .queue-title{font-size:.9rem;font-weight:600;color:var(--text)}
 .queue-actions{display:flex;gap:8px}
 
-.task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius2);padding:14px 16px;margin-bottom:8px;transition:all .15s;cursor:pointer;position:relative}
-.task-card:hover{border-color:var(--border2);background:var(--surface2)}
+.task-card{background:var(--glass);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid var(--glass-border);border-radius:var(--radius2);padding:14px 16px;margin-bottom:8px;transition:all var(--transition);cursor:pointer;position:relative;box-shadow:0 2px 12px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.04)}
+.task-card:hover{border-color:rgba(255,255,255,0.2);background:var(--surface2);transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08)}
 .task-card.active-task{border-color:var(--accent);background:var(--accent3)}
 .task-card.deadline-task{border-left:3px solid var(--red)}
 .task-card-top{display:flex;align-items:flex-start;gap:10px}
@@ -144,7 +152,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .start-btn.stop-btn{background:var(--red2);color:var(--red);border:1px solid rgba(232,92,92,0.3)}
 
 /* ACTIVE SESSION PANEL */
-.active-session-panel{background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius2);padding:20px;margin-bottom:16px;display:none}
+.active-session-panel{background:rgba(232,168,50,0.06);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(232,168,50,0.3);border-radius:var(--radius2);padding:20px;margin-bottom:16px;display:none;box-shadow:0 0 40px rgba(232,168,50,0.08),0 4px 24px rgba(0,0,0,0.3)}
 .active-session-panel.visible{display:block}
 .active-session-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .active-session-subject{font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
@@ -282,7 +290,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
 .modal-overlay.open{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius3);width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;animation:modalIn .2s ease}
+.modal{background:rgba(12,12,20,0.92);backdrop-filter:blur(32px) saturate(200%);-webkit-backdrop-filter:blur(32px) saturate(200%);border:1px solid var(--glass-border);border-radius:var(--radius3);width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;animation:modalIn .2s ease;box-shadow:0 24px 64px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.08)}
 @keyframes modalIn{from{opacity:0;transform:scale(.97) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal-wide{max-width:720px}
 .modal-header{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -358,6 +366,76 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .tab:hover:not(.active){color:var(--text2)}
 
+/* DRAG HANDLES */
+.drag-handle{display:flex;align-items:center;justify-content:center;width:24px;height:32px;cursor:grab;color:var(--text3);flex-shrink:0;opacity:0;transition:opacity var(--transition);touch-action:none;-webkit-touch-callout:none;user-select:none}
+.drag-handle:active{cursor:grabbing}
+.drag-handle svg{width:14px;height:14px;pointer-events:none}
+.task-card:hover .drag-handle,.chapter-group:hover .drag-handle,.subject-group:hover .drag-handle{opacity:1}
+.task-card.dragging{opacity:0.4;transform:scale(0.98)}
+.task-card.drag-over{border-top:2px solid var(--accent) !important}
+.chapter-group.dragging{opacity:0.4}
+.chapter-group.drag-over-ch{border-top:2px solid var(--accent)}
+.subject-group.dragging-subj{opacity:0.4}
+.subject-group.drag-over-subj{border-top:2px solid var(--accent)}
+
+/* THEME PICKER */
+.theme-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;transition:transform var(--transition),box-shadow var(--transition);border:2px solid transparent;display:inline-block}
+.theme-swatch:hover{transform:scale(1.15)}
+.theme-swatch.selected{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,0.3)}
+.theme-swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* SEQUENTIAL LOCK BADGE */
+.locked-badge{font-size:.62rem;background:rgba(232,92,92,0.12);color:var(--red);border:1px solid rgba(232,92,92,0.25);padding:2px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:3px}
+
+/* ANIMATED VIEW TRANSITIONS */
+.view.active{animation:viewSlideIn .25s cubic-bezier(.4,0,.2,1)}
+@keyframes viewSlideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* SUBJECT PROGRESS BAR IN STATS */
+.subj-progress-bar-wrap{margin:12px 0}
+.subj-progress-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.subj-progress-label{font-size:.75rem;color:var(--text2);width:90px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.subj-progress-track{flex:1;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden}
+.subj-progress-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.subj-progress-pct{font-family:var(--font-mono);font-size:.68rem;color:var(--text3);width:32px;text-align:right;flex-shrink:0}
+
+/* FORM INPUT GLASS */
+.form-input,.form-select,.form-textarea{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);border-radius:9px;padding:9px 12px;font-size:.88rem;font-family:var(--font);transition:border-color var(--transition),box-shadow var(--transition);outline:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.15)}
+
+/* GLOW EFFECTS ON BUTTONS */
+.btn-primary{background:var(--accent);color:#000;box-shadow:0 0 20px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.25)}
+.btn-primary:hover{background:var(--accent);filter:brightness(1.1);box-shadow:0 0 30px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.4);transform:translateY(-1px)}
+.start-btn{box-shadow:0 0 16px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.3)}
+.start-btn:hover{box-shadow:0 0 24px rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.5) !important}
+
+/* SUBJECT SECTION HEADER GLASS */
+.subject-group-header{background:rgba(255,255,255,0.03);border-radius:10px;padding:8px 10px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.05)}
+
+/* CHAPTER LABEL */
+.chapter-label{font-size:.7rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:6px 4px 4px;font-family:var(--font-mono);display:flex;align-items:center;gap:6px}
+
+/* STAT CARD GLASS */
+.stat-card{background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:var(--radius);padding:14px 16px;transition:transform var(--transition);box-shadow:0 2px 12px rgba(0,0,0,0.2)}
+.stat-card:hover{transform:translateY(-2px)}
+
+/* CHART CARD GLASS */
+.chart-card{background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:var(--radius2);padding:18px 20px;margin-bottom:16px;box-shadow:0 4px 24px rgba(0,0,0,0.25)}
+
+/* SETUP CARD GLASS */
+.setup-card{background:rgba(10,10,18,0.95);backdrop-filter:blur(40px) saturate(200%);-webkit-backdrop-filter:blur(40px) saturate(200%);border:1px solid var(--glass-border);border-radius:var(--radius3);width:100%;max-width:540px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.6)}
+
+/* IMPORT INSTRUCTIONS GLASS */
+.import-instructions{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;font-size:.78rem;color:var(--text3);margin-bottom:16px}
+
+/* FILTER BUTTONS GLASS */
+.filter-btn{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:var(--text2);padding:5px 12px;border-radius:20px;font-size:.75rem;cursor:pointer;transition:all var(--transition);font-family:var(--font);font-weight:500;backdrop-filter:blur(8px)}
+.filter-btn:hover{border-color:var(--border2);color:var(--text);background:rgba(255,255,255,0.08)}
+.filter-btn.active{background:rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.15);border-color:rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.35);color:var(--accent)}
+
+/* SUBJECT SECTION HEADER GLASS */
+
+/* SUBJECT SECTION HEADER GLASS */
 /* SUBJECT TAG STYLES (generated dynamically) */
 /* Pagination / load more */
 .load-more{display:flex;justify-content:center;padding:12px}
@@ -378,7 +456,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 @media(min-width:769px){.mobile-nav{display:none}}
 
 /* MOBILE BOTTOM NAV */
-.mobile-nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
+.mobile-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,16,0.85);backdrop-filter:blur(24px) saturate(200%);-webkit-backdrop-filter:blur(24px) saturate(200%);border-top:1px solid var(--glass-border);z-index:100;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
 .mobile-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 12px;font-size:.6rem;font-weight:600;color:var(--text3);transition:color .15s;border:none;background:none;font-family:var(--font);text-transform:uppercase;letter-spacing:.04em}
 .mobile-nav-item svg{width:20px;height:20px}
 .mobile-nav-item.active{color:var(--accent)}
@@ -582,10 +660,14 @@ function formatMin(m){if(!m&&m!==0)return'—';const h=Math.floor(m/60),mn=Math.
 function formatMinShort(m){const h=Math.floor(m/60),mn=Math.round(m%60);return h>0?`${h}h ${mn}m`:`${mn}m`}
 function fmtTime(s){const m=Math.floor(s/60),sec=s%60;return`${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`}
 function fmtHours(m){return(m/60).toFixed(1)}
-function ramadanDay(date=new Date()){
+function getDayStartHour(){return state.settings.dayStartHour||8;}
+function ramadanDay(date){
+  date=date||new Date();
   const s=state.settings;if(!s||!s.ramadanStartDate)return null;
+  // Shift date back by dayStartHour so "today" starts at e.g. 8am
+  const shifted=new Date(date.getTime()-getDayStartHour()*3600000);
   const start=new Date(s.ramadanStartDate);start.setHours(0,0,0,0);
-  const d=new Date(date);d.setHours(0,0,0,0);
+  const d=new Date(shifted);d.setHours(0,0,0,0);
   return Math.floor((d-start)/(86400000))+1;
 }
 function ramadanDayToCalendar(day){
@@ -730,14 +812,21 @@ function getSubjectDaysSinceStudied(subjectId){
   return cur-last;
 }
 function getTonightSessionMinutes(){
-  const today=new Date().toDateString();
-  return state.sessions.filter(s=>new Date(s.calendarDate).toDateString()===today).reduce((a,s)=>a+s.durationMinutes,0);
+  const todayRD=todayRamadanDay();
+  return state.sessions.filter(s=>s.ramadanDay===todayRD).reduce((a,s)=>a+s.durationMinutes,0);
 }
 function getAvoidedSubjects(){
   const thresh=state.settings.avoidanceThresholdDays||3;
+  const curDay=todayRamadanDay()||0;
+  const sStart=studyStartDay();
+  // Only warn about avoidance once the study period has actually started
+  // AND only if the subject has been studied at least once before (never-started != avoided)
   return state.subjects.filter(sub=>{
+    if(curDay<sStart)return false; // study period hasn't started yet
     const hasTasks=state.tasks.some(t=>t.subjectId===sub.id&&incomplete(t));
     if(!hasTasks)return false;
+    const lastDay=getSubjectLastStudiedDay(sub.id);
+    if(!lastDay)return false; // never studied = not yet avoided, just not started
     return getSubjectDaysSinceStudied(sub.id)>=thresh;
   });
 }
@@ -817,13 +906,40 @@ function getTonightSkipped(){
   return state.skippedTonight.ids;
 }
 
+// Sequential subjects: within each chapter, only first incomplete task is eligible
+function getSequentialSubjectIds(){
+  return state.settings.sequentialSubjects||['islam'];
+}
+function applySequentialFilter(tasks){
+  const seqIds=getSequentialSubjectIds();
+  // For each sequential subject+chapter combo, only keep the first incomplete task
+  const blocked=new Set();
+  seqIds.forEach(subjectId=>{
+    // Group incomplete tasks by chapter
+    const subTasks=tasks.filter(t=>t.subjectId===subjectId&&incomplete(t));
+    const byChapter={};
+    subTasks.forEach(t=>{
+      const ch=t.chapter||'__none';
+      if(!byChapter[ch])byChapter[ch]=[];
+      byChapter[ch].push(t);
+    });
+    // For each chapter, sort by _order then block all but first
+    Object.values(byChapter).forEach(chTasks=>{
+      const sorted=[...chTasks].sort((a,b)=>(a._order||0)-(b._order||0)||(a.name.localeCompare(b.name)));
+      sorted.slice(1).forEach(t=>blocked.add(t.id)); // block all after first
+    });
+  });
+  return tasks.filter(t=>!blocked.has(t.id));
+}
 function generateTonightQueue(){
   // Build a capped queue that fills up to (target - already studied tonight)
   const target=state.settings.dailyTargetMinutes||480;
   const alreadyDone=getTonightSessionMinutes();
   const budget=Math.max(0,target-alreadyDone);
   const skipped=getTonightSkipped();
-  const full=generateDailyQueue().filter(t=>!skipped.has(t.id));
+  const allRanked=generateDailyQueue();
+  const afterSeq=applySequentialFilter(allRanked);
+  const full=afterSeq.filter(t=>!skipped.has(t.id));
   // Fill up to budget, always include pinned deadline tasks regardless
   const queue=[];let acc=0;
   for(const t of full){
@@ -833,14 +949,14 @@ function generateTonightQueue(){
       queue.push(t);
       acc+=rem;
     }
-    if(acc>=budget*1.1&&!isPinned)break; // slight overrun ok, stop after
+    if(acc>=budget*1.1&&!isPinned)break;
   }
   return{queue,full,budget};
 }
 
 function skipTonightTask(taskId){
   getTonightSkipped().add(taskId);
-  playSound('tap');triggerHaptic('light');
+  playSound('skip');triggerHaptic('light');
   showToast('Task moved to next session','info');
   renderDaily();
 }
@@ -869,7 +985,7 @@ function pauseTimer(){
   state.activeTimer.paused=true;
   clearInterval(state.timerInterval);
   saveActiveTimer(state.activeTimer);
-  playSound('tap');triggerHaptic('light');
+  playSound('pause');triggerHaptic('light');
   renderView(state.currentView);
 }
 function resumeTimer(){
@@ -880,7 +996,7 @@ function resumeTimer(){
   delete state.activeTimer.pauseStart;
   saveActiveTimer(state.activeTimer);
   state.timerInterval=setInterval(tickTimer,1000);
-  playSound('tap');triggerHaptic('light');
+  playSound('resume');triggerHaptic('light');
   renderView(state.currentView);
 }
 function getElapsedSeconds(){
@@ -935,7 +1051,7 @@ function restoreTimer(){
 // NAVIGATION
 // ============================================================
 function navigate(view){
-  playSound('tap');triggerHaptic('light');
+  playSound('nav');triggerHaptic('light');
   state.currentView=view;
   document.querySelectorAll('.nav-item,[data-view]').forEach(el=>{
     el.classList.toggle('active',el.dataset.view===view);
@@ -1158,6 +1274,9 @@ function getLastConfidence(taskId){
 // ============================================================
 // RENDER: TASKS VIEW
 // ============================================================
+// ── Drag state ─────────────────────────────────────────────
+let drag={active:null,over:null,type:null}; // type: 'task'|'chapter'
+
 function renderTasks(){
   const el=document.getElementById('view-tasks');
   const f=state.taskFilter;
@@ -1177,7 +1296,9 @@ function renderTasks(){
     <input class="search-input" placeholder="Search tasks..." value="${escapedHTML(f.search)}" oninput="setTaskFilter('search',this.value)" style="margin-left:auto">
   </div>`;
 
-  // Group by subject → chapter
+  const DRAG_ICON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>`;
+
+  // Group by subject → chapter, sorted by _order
   let content='';
   const grouped={};
   tasks.forEach(t=>{
@@ -1188,26 +1309,52 @@ function renderTasks(){
   if(!tasks.length){
     content=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>No tasks found</p></div>`;
   }else{
-    state.subjects.forEach(subj=>{
+    // Sort subjects by their _order
+    const sortedSubjects=[...state.subjects].sort((a,b)=>(a._order||0)-(b._order||0));
+    sortedSubjects.forEach(subj=>{
       const subTasks=grouped[subj.id];
       if(!subTasks||!subTasks.length)return;
       const done=subTasks.filter(t=>t.status==='completed').length;
       const prog=Math.round((done/subTasks.length)*100);
-      // Group by chapter
+      // Group by chapter sorted by _chapterOrder
       const chapters={};
-      subTasks.forEach(t=>{const ch=t.chapter||'__none';if(!chapters[ch])chapters[ch]=[];chapters[ch].push(t);});
+      const chapterOrder={};
+      subTasks.forEach(t=>{
+        const ch=t.chapter||'__none';
+        if(!chapters[ch])chapters[ch]=[];
+        chapters[ch].push(t);
+        if(t._chapterOrder!==undefined&&chapterOrder[ch]===undefined)chapterOrder[ch]=t._chapterOrder;
+      });
+      // Sort chapters by order
+      const sortedChapters=Object.keys(chapters).sort((a,b)=>(chapterOrder[a]||0)-(chapterOrder[b]||0));
+      // Sort tasks within each chapter
+      sortedChapters.forEach(ch=>chapters[ch].sort((a,b)=>(a._order||0)-(b._order||0)));
 
-      content+=`<div class="subject-group">
+      content+=`<div class="subject-group" data-subject="${subj.id}" draggable="true"
+        ondragstart="onSubjDragStart(event,'${subj.id}')" ondragover="onSubjDragOver(event,'${subj.id}')"
+        ondrop="onSubjDrop(event,'${subj.id}')" ondragleave="onSubjDragLeave(event,'${subj.id}')">
         <div class="subject-group-header">
+          <div class="drag-handle" title="Drag to reorder subject">${DRAG_ICON}</div>
           <div class="subject-group-dot" style="background:${subj.color}"></div>
           <div class="subject-group-name">${subj.name}</div>
           <div class="subject-group-count">${done}/${subTasks.length}</div>
           <div class="subject-group-prog"><div class="subject-group-prog-fill" style="width:${prog}%;background:${subj.color}"></div></div>
         </div>`;
 
-      Object.entries(chapters).forEach(([ch,chTasks])=>{
-        if(ch!=='__none'){content+=`<div class="chapter-group"><div class="chapter-label">${escapedHTML(ch)}</div>`;}
-        chTasks.forEach(task=>{content+=renderTaskCard(task,true);});
+      sortedChapters.forEach(ch=>{
+        const chTasks=chapters[ch];
+        const chKey=ch==='__none'?'__none':ch;
+        if(ch!=='__none'){
+          content+=`<div class="chapter-group" data-ch="${escapedHTML(ch)}" data-subject="${subj.id}"
+            ondragover="onChDragOver(event,'${subj.id}','${escapedHTML(ch)}')"
+            ondrop="onChDrop(event,'${subj.id}','${escapedHTML(ch)}')"
+            ondragleave="onChDragLeave(event)">
+            <div class="chapter-label">
+              <span class="drag-handle" style="width:18px;height:18px" title="Drag chapter">${DRAG_ICON}</span>
+              ${escapedHTML(ch)}
+            </div>`;
+        }
+        chTasks.forEach(task=>{content+=renderTaskCardDraggable(task);});
         if(ch!=='__none')content+=`</div>`;
       });
       content+=`</div>`;
@@ -1226,6 +1373,79 @@ function renderTasks(){
   <div class="tasks-toolbar">${subjectBtns}</div>
   <div class="tasks-toolbar">${statusBtns}</div>
   <div>${content}</div>`;
+}
+
+// Draggable task card wrapper
+function renderTaskCardDraggable(task){
+  const DRAG_ICON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>`;
+  const inner=renderTaskCard(task,true);
+  // Wrap with drag handle prepended
+  const withHandle=inner.replace('<div class="task-card-top">',
+    `<div class="drag-handle" draggable="false" title="Drag to reorder" 
+      onmousedown="initTaskDrag(event,'${task.id}')"
+      ontouchstart="initTaskDragTouch(event,'${task.id}')">${DRAG_ICON}</div><div class="task-card-top">`
+  );
+  // Add drag events to the card itself
+  return withHandle.replace(`class="task-card`,
+    `draggable="true" data-task-id="${task.id}" ondragstart="onTaskDragStart(event,'${task.id}')" ondragover="onTaskDragOver(event,'${task.id}')" ondrop="onTaskDrop(event,'${task.id}')" ondragleave="onTaskDragLeave(event,'${task.id}')" class="task-card`
+  );
+}
+
+// ── Drag handlers: TASK ─────────────────────────────────────
+function onTaskDragStart(e,taskId){drag.active=taskId;drag.type='task';e.dataTransfer.effectAllowed='move';playSound('tap');}
+function onTaskDragOver(e,taskId){e.preventDefault();if(drag.type!=='task'||drag.active===taskId)return;e.currentTarget.classList.add('drag-over');}
+function onTaskDragLeave(e,taskId){e.currentTarget.classList.remove('drag-over');}
+async function onTaskDrop(e,targetId){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over');
+  if(drag.type!=='task'||!drag.active||drag.active===targetId)return;
+  const fromIdx=state.tasks.findIndex(t=>t.id===drag.active);
+  const toIdx=state.tasks.findIndex(t=>t.id===targetId);
+  if(fromIdx<0||toIdx<0)return;
+  // Reassign _order within same subject+chapter
+  const from=state.tasks[fromIdx];const to=state.tasks[toIdx];
+  if(from.subjectId!==to.subjectId||from.chapter!==to.chapter)return;
+  // Get all tasks in same group sorted
+  const group=state.tasks.filter(t=>t.subjectId===from.subjectId&&t.chapter===from.chapter).sort((a,b)=>(a._order||0)-(b._order||0));
+  const fi=group.findIndex(t=>t.id===drag.active);const ti=group.findIndex(t=>t.id===targetId);
+  group.splice(ti,0,group.splice(fi,1)[0]);
+  group.forEach((t,i)=>{t._order=i;});
+  const batch=db.batch();
+  group.forEach(t=>batch.set(db.collection('users').doc(state.uid).collection('tasks').doc(t.id),t));
+  await batch.commit();
+  playSound('drop');triggerHaptic('medium');
+  renderTasks();drag.active=null;
+}
+function initTaskDrag(e,id){e.stopPropagation();}
+function initTaskDragTouch(e,id){e.stopPropagation();}
+
+// ── Drag handlers: CHAPTER ──────────────────────────────────
+function onChDragOver(e,subjId,ch){e.preventDefault();if(drag.type!=='task')return;e.currentTarget.classList.add('drag-over-ch');}
+function onChDragLeave(e){document.querySelectorAll('.drag-over-ch').forEach(el=>el.classList.remove('drag-over-ch'));}
+async function onChDrop(e,subjId,ch){
+  e.preventDefault();e.stopPropagation();onChDragLeave(e);
+  if(drag.type!=='task'||!drag.active)return;
+  const task=getTask(drag.active);if(!task)return;
+  // Move task to this chapter
+  task.chapter=ch==='__none'?null:ch;task._order=9999;
+  await saveTask(task);playSound('pop');triggerHaptic('light');
+  renderTasks();drag.active=null;
+}
+
+// ── Drag handlers: SUBJECT ──────────────────────────────────
+function onSubjDragStart(e,subjId){drag.active=subjId;drag.type='subject';e.dataTransfer.effectAllowed='move';playSound('tap');}
+function onSubjDragOver(e,subjId){e.preventDefault();if(drag.type!=='subject'||drag.active===subjId)return;e.currentTarget.classList.add('drag-over-subj');}
+function onSubjDragLeave(e,subjId){e.currentTarget.classList.remove('drag-over-subj');}
+async function onSubjDrop(e,targetId){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over-subj');
+  if(drag.type!=='subject'||!drag.active||drag.active===targetId)return;
+  const sorted=[...state.subjects].sort((a,b)=>(a._order||0)-(b._order||0));
+  const fi=sorted.findIndex(s=>s.id===drag.active);const ti=sorted.findIndex(s=>s.id===targetId);
+  if(fi<0||ti<0)return;
+  sorted.splice(ti,0,sorted.splice(fi,1)[0]);
+  sorted.forEach((s,i)=>{s._order=i;});
+  await saveSubjects(sorted);
+  playSound('pop');triggerHaptic('light');
+  renderTasks();drag.active=null;
 }
 
 function setTaskFilter(key,val){state.taskFilter[key]=val;renderTasks();}
@@ -1353,7 +1573,21 @@ function renderStatsSubjects(){
     </tr>`;
   }).filter(Boolean).join('');
 
-  return`<div class="chart-grid-2">
+  // Subject progress bars
+  const progBars=state.subjects.filter(subj=>state.tasks.some(t=>t.subjectId===subj.id)).map(subj=>{
+    const total=state.tasks.filter(t=>t.subjectId===subj.id).length;
+    const done=state.tasks.filter(t=>t.subjectId===subj.id&&t.status==='completed').length;
+    const pct=total?Math.round(done/total*100):0;
+    return`<div class="subj-progress-row">
+      <div class="subj-progress-label" title="${subj.name}">${subj.name}</div>
+      <div class="subj-progress-track"><div class="subj-progress-fill" style="width:${pct}%;background:${subj.color}"></div></div>
+      <div class="subj-progress-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  return`<div class="chart-card" style="margin-bottom:16px"><div class="chart-card-title">Completion by Subject</div>
+  <div class="subj-progress-bar-wrap">${progBars}</div></div>
+  <div class="chart-grid-2">
     <div class="chart-card"><div class="chart-card-title">Estimation Accuracy</div><div class="chart-wrap"><canvas id="chart-accuracy" height="220"></canvas></div></div>
     <div class="chart-card"><div class="chart-card-title">Subject Calibration Coefficients</div><div class="chart-wrap"><canvas id="chart-coeff" height="220"></canvas></div></div>
   </div>
@@ -1497,8 +1731,11 @@ function renderSettings(){
     <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div class="subject-group-dot" style="background:${sub.color}"></div>
       <input class="form-input" style="width:140px;padding:5px 8px" value="${escapedHTML(sub.name)}" onchange="updateSubjectName('${sub.id}',this.value)">
-      <div class="color-picker-row" style="flex:1">
-        ${SWATCH_COLORS.map(c=>`<div class="color-swatch${sub.color===c?' selected':''}" style="background:${c}" onclick="updateSubjectColor('${sub.id}','${c}')"></div>`).join('')}
+      <div style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap">
+        <input type="color" value="${sub.color||'#888888'}" oninput="updateSubjectColor('${sub.id}',this.value)" style="width:30px;height:30px;border:2px solid rgba(255,255,255,0.2);border-radius:8px;cursor:pointer;background:none;padding:2px;flex-shrink:0">
+        <div class="color-picker-row">
+          ${SWATCH_COLORS.map(c=>`<div class="color-swatch${sub.color===c?' selected':''}" style="background:${c}" onclick="updateSubjectColor('${sub.id}','${c}')"></div>`).join('')}
+        </div>
       </div>
     </div>`).join('');
 
@@ -1538,6 +1775,35 @@ function renderSettings(){
         <label class="form-label">Avoidance Alert Threshold (days)</label>
         <input type="number" class="form-input" value="${s.avoidanceThresholdDays||3}" min="1" max="7" onchange="updateSetting('avoidanceThresholdDays',+this.value)" style="max-width:120px">
         <div class="form-hint">Alert when a subject hasn't been studied for this many days</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Theme</div>
+    <div class="card">
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Accent Color</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          ${['#e8a832','#4dbe8c','#38bdf8','#9b72e8','#f472b6','#f97316','#22d3ee','#a3e635'].map(c=>`<div class="theme-swatch${(s.accentColor||'#e8a832')===c?' selected':''}" style="background:${c}" onclick="setThemeColor('${c}')"></div>`).join('')}
+          <input type="color" value="${s.accentColor||'#e8a832'}" oninput="setThemeColor(this.value)" style="width:28px;height:28px;border:2px solid rgba(255,255,255,0.2);border-radius:50%;cursor:pointer;background:none;padding:2px;flex-shrink:0">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Day Starts At (hour, 0-23)</label>
+        <input type="number" class="form-input" value="${s.dayStartHour||8}" min="0" max="23" onchange="updateSetting('dayStartHour',+this.value)" style="max-width:100px">
+        <div class="form-hint">Sessions before this hour count as the previous Ramadan day. E.g. "8" means Day 8 runs 8am Feb 26 → 8am Feb 27.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Sequential Subjects</div>
+    <div class="card">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Subjects with ordered lessons (comma-separated IDs)</label>
+        <input class="form-input" value="${(s.sequentialSubjects||['islam']).join(',')}" onchange="updateSetting('sequentialSubjects',this.value.split(',').map(x=>x.trim()))" placeholder="islam,biology">
+        <div class="form-hint">For these subjects, within each chapter only the first incomplete lesson is suggested. Current subject IDs: ${state.subjects.map(s=>s.id).join(', ')}</div>
       </div>
     </div>
   </div>
@@ -1619,6 +1885,31 @@ async function updateSubjectColor(id,color){
   state.subjects[idx].color=color;
   await saveSubjects(state.subjects);
   renderSettings();
+}
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16);const g=parseInt(hex.slice(3,5),16);const b=parseInt(hex.slice(5,7),16);
+  return{r,g,b};
+}
+async function setThemeColor(hex){
+  if(!hex||hex.length<4)return;
+  // Normalize short hex
+  if(hex.length===4)hex='#'+hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3];
+  const {r,g,b}=hexToRgb(hex);
+  const root=document.documentElement;
+  root.style.setProperty('--accent',hex);
+  root.style.setProperty('--accent-r',r);
+  root.style.setProperty('--accent-g',g);
+  root.style.setProperty('--accent-b',b);
+  root.style.setProperty('--accent2',`rgba(${r},${g},${b},0.15)`);
+  root.style.setProperty('--accent3',`rgba(${r},${g},${b},0.08)`);
+  root.style.setProperty('--glow',`rgba(${r},${g},${b},0.15)`);
+  state.settings.accentColor=hex;
+  await saveSettings(state.settings);
+  renderSettings();
+}
+function applyThemeColor(){
+  const hex=state.settings.accentColor;if(!hex)return;
+  setThemeColor(hex);
 }
 
 // ============================================================
@@ -1728,7 +2019,7 @@ async function editTask(taskId){
 async function deleteTaskConfirm(id){
   if(!confirm('Delete this task and all its sessions?'))return;
   if(state.activeTimer&&state.activeTimer.taskId===id)await stopTimer(true);
-  await deleteTask(id);closeModal();renderView(state.currentView);
+  await deleteTask(id);playSound('delete');triggerHaptic('heavy');closeModal();renderView(state.currentView);
 }
 
 function openTaskDetail(taskId){
@@ -2235,6 +2526,7 @@ function showAppShell(){
   document.getElementById('loading').style.display='none';
   document.getElementById('login-view').style.display='none';
   document.getElementById('app-shell').style.display='block';
+  applyThemeColor();
   updateSidebarUser();
   updateSidebarDay();
   navigate('daily');
@@ -2339,26 +2631,75 @@ function playTone(freq,type,duration,gain,fadeOut){
     osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duration);
   }catch(e){}
 }
+function chord(freqs,type,duration,gain,delay){delay=delay||0;freqs.forEach(function(f,i){setTimeout(function(){playTone(f,type,duration,gain);},delay+i*0);});}
 function playSound(type){
   switch(type){
-    case 'tap': playTone(600,'sine',0.06,0.1); break;
+    case 'tap':
+      playTone(700,'sine',0.04,0.08);
+      break;
+    case 'nav':
+      playTone(520,'sine',0.05,0.07);
+      setTimeout(function(){playTone(660,'sine',0.06,0.06);},40);
+      break;
     case 'start':
-      playTone(440,'sine',0.1,0.15);
-      setTimeout(function(){playTone(554,'sine',0.12,0.15);},80);
-      setTimeout(function(){playTone(660,'sine',0.15,0.15);},160);
+      // Rising arpeggio - satisfying "let's go!"
+      [330,415,523,659].forEach(function(f,i){setTimeout(function(){playTone(f,'sine',0.18,0.16);},i*70);});
+      setTimeout(function(){chord([523,659,784],'sine',0.4,0.1);},350);
+      break;
+    case 'pause':
+      playTone(500,'sine',0.12,0.14);
+      setTimeout(function(){playTone(400,'sine',0.15,0.12);},80);
+      break;
+    case 'resume':
+      playTone(400,'sine',0.1,0.12);
+      setTimeout(function(){playTone(500,'sine',0.12,0.12);},70);
+      setTimeout(function(){playTone(600,'sine',0.1,0.1);},140);
       break;
     case 'stop':
-      playTone(500,'sine',0.15,0.15);
-      setTimeout(function(){playTone(400,'sine',0.2,0.12);},100);
+      playTone(600,'triangle',0.1,0.12);
+      setTimeout(function(){playTone(450,'triangle',0.15,0.12);},90);
+      setTimeout(function(){playTone(350,'triangle',0.2,0.1);},180);
       break;
     case 'complete':
-      [523,659,784,1047].forEach(function(f,i){setTimeout(function(){playTone(f,'sine',0.25,0.2);},i*100);});
-      setTimeout(function(){playTone(1047,'triangle',0.5,0.18);},450);
+      // Victory fanfare
+      [262,330,392].forEach(function(f,i){setTimeout(function(){playTone(f,'triangle',0.15,0.18);},i*60);});
+      setTimeout(function(){
+        [392,494,587,784].forEach(function(f,i){setTimeout(function(){playTone(f,'sine',0.3,0.2);},i*90);});
+      },200);
+      setTimeout(function(){chord([523,659,784,1047],'sine',0.6,0.15);},600);
       break;
-    case 'pop': playTone(800,'sine',0.05,0.1); break;
+    case 'pop':
+      playTone(900,'sine',0.04,0.12);
+      setTimeout(function(){playTone(1100,'sine',0.03,0.08);},30);
+      break;
     case 'log':
-      playTone(440,'sine',0.08,0.12);
-      setTimeout(function(){playTone(550,'sine',0.1,0.1);},60);
+      playTone(440,'sine',0.08,0.13);
+      setTimeout(function(){playTone(550,'sine',0.09,0.11);},55);
+      setTimeout(function(){playTone(660,'sine',0.08,0.1);},110);
+      break;
+    case 'skip':
+      playTone(600,'sawtooth',0.04,0.08);
+      setTimeout(function(){playTone(500,'sawtooth',0.05,0.07);},60);
+      break;
+    case 'drag':
+      playTone(350,'sine',0.03,0.07);
+      break;
+    case 'drop':
+      playTone(500,'sine',0.06,0.1);
+      setTimeout(function(){playTone(650,'sine',0.05,0.08);},50);
+      break;
+    case 'delete':
+      playTone(300,'sawtooth',0.08,0.12);
+      setTimeout(function(){playTone(200,'sawtooth',0.1,0.1);},100);
+      break;
+    case 'error':
+      playTone(200,'square',0.1,0.12);
+      setTimeout(function(){playTone(150,'square',0.08,0.08);},80);
+      break;
+    case 'streak':
+      // Special sound for hitting daily target
+      [523,659,784,1047,1319].forEach(function(f,i){setTimeout(function(){playTone(f,'sine',0.2,0.18);},i*80);});
+      setTimeout(function(){chord([784,1047,1319],'triangle',0.8,0.12);},450);
       break;
   }
 }
