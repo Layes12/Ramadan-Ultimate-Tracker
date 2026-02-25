@@ -6,7 +6,207 @@
 <title>Ramadan Study Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&family=Hind+Siliguri:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+// ============================================================
+// FOCUS MODE
+// ============================================================
+let focusQuoteIndex=0;let focusQuoteTimer=null;
+
+function getMotivationalQuotes(){
+  const custom=state.settings.motivationalQuotes;
+  if(custom&&custom.length)return custom;
+  return[
+    "The secret of getting ahead is getting started.",
+    "One step at a time. One page at a time.",
+    "You don't have to be great to start, but you have to start to be great.",
+    "Deep work is the superpower of the 21st century.",
+    "Every expert was once a beginner. Keep going.",
+    "Progress, not perfection.",
+    "Your future self is watching. Make them proud.",
+    "Focused energy beats scattered effort every time.",
+    "This session matters. Show up fully.",
+    "Small daily improvements lead to stunning results.",
+    "The mind is everything. What you think, you become.",
+    "Study hard, not hard studying — work with intention.",
+    "Knowledge is a treasure, but practice is the key.",
+    "Consistency compounds. Keep the streak alive.",
+  ];
+}
+
+function openFocusMode(){
+  if(!state.activeTimer){showToast('Start a timer first','error');return;}
+  const task=getTask(state.activeTimer.taskId);
+  const subj=task?getSubject(task.subjectId):{name:'',color:'#888'};
+  const ov=document.getElementById('focus-overlay');
+  document.getElementById('focus-task-name').textContent=task?task.name:'';
+  document.getElementById('focus-subject-name').textContent=subj.name;
+  // Set accent ring color
+  document.getElementById('focus-ring').style.stroke=subj.color||'var(--accent)';
+  ov.classList.add('open');
+  updateFocusDisplay();
+  rotateFocusQuote();
+  focusQuoteTimer=setInterval(rotateFocusQuote,25000);
+  triggerHaptic('medium');
+}
+function closeFocusMode(){
+  document.getElementById('focus-overlay').classList.remove('open');
+  if(focusQuoteTimer){clearInterval(focusQuoteTimer);focusQuoteTimer=null;}
+}
+function focusPauseResume(){
+  if(state.activeTimer&&state.activeTimer.paused){resumeTimer();document.getElementById('focus-pause-btn').textContent='⏸ Pause';}
+  else{pauseTimer();document.getElementById('focus-pause-btn').textContent='▶ Resume';}
+}
+function rotateFocusQuote(){
+  const quotes=getMotivationalQuotes();
+  const el=document.getElementById('focus-quote');
+  if(!el)return;
+  el.style.opacity='0';
+  setTimeout(()=>{
+    focusQuoteIndex=(focusQuoteIndex+1)%quotes.length;
+    el.textContent=quotes[focusQuoteIndex];
+    el.style.opacity='1';
+  },400);
+}
+function updateFocusDisplay(){
+  if(!document.getElementById('focus-overlay').classList.contains('open'))return;
+  const sec=getElapsedSeconds();
+  document.getElementById('focus-timer').textContent=fmtTime(sec);
+  // Ring progress
+  const task=getTask(state.activeTimer?.taskId);
+  const pomMins=getPomodoroMins();
+  const circ=628;
+  if(task){
+    const estSec=pomMins>0?pomMins*60:task.estimatedMinutes*60;
+    const dispSec=pomMins>0?sec%(pomMins*60)||pomMins*60:sec;
+    const prog=Math.min(1,dispSec/estSec);
+    document.getElementById('focus-ring').style.strokeDashoffset=circ-(circ*prog);
+    // Pomo bar
+    if(pomMins>0){
+      document.getElementById('focus-pomo-fill').style.width=(prog*100)+'%';
+      const remaining=pomMins*60-dispSec;
+      document.getElementById('focus-pomo-label').textContent=formatMin(Math.ceil(remaining/60))+' until break';
+    } else {
+      document.getElementById('focus-pomo-label').textContent='';
+      document.getElementById('focus-pomo-fill').style.width='0%';
+    }
+  }
+  // Pause button state
+  const pbtn=document.getElementById('focus-pause-btn');
+  if(pbtn)pbtn.textContent=state.activeTimer?.paused?'▶ Resume':'⏸ Pause';
+}
+// Hook updateFocusDisplay into tickTimer loop
+const _origTick=tickTimer;
+
+// ============================================================
+// DAILY TARGET GOAL CELEBRATION
+// ============================================================
+let _goalCelebratedDay=null;
+function checkDailyGoalCelebration(){
+  const target=state.settings.dailyTargetMinutes||480;
+  const done=getTonightSessionMinutes();
+  const today=todayRamadanDay();
+  if(done>=target&&_goalCelebratedDay!==today){
+    _goalCelebratedDay=today;
+    setTimeout(()=>{
+      launchConfetti();launchConfetti();
+      playSound('streak');triggerHaptic('success');
+      const div=document.createElement('div');
+      div.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9990;background:rgba(10,10,18,0.97);backdrop-filter:blur(32px);border:1px solid rgba(232,168,50,0.5);border-radius:24px;padding:36px 40px;text-align:center;box-shadow:0 0 80px rgba(232,168,50,0.15),0 24px 64px rgba(0,0,0,0.7)';
+      div.innerHTML=`<div style="font-size:2.5rem;margin-bottom:12px">🎉</div>
+        <div style="font-family:var(--font-head);font-size:1.4rem;font-weight:700;color:var(--text);margin-bottom:8px">Daily Goal Complete!</div>
+        <div style="color:var(--accent);font-family:var(--font-mono);font-size:1rem;margin-bottom:16px">${formatMin(done)} studied today</div>
+        <div style="color:var(--text3);font-size:.82rem;margin-bottom:24px">You hit your target. Outstanding work.</div>
+        <button onclick="this.closest('div[style]').remove()" style="background:var(--accent);color:#000;border:none;padding:10px 28px;border-radius:12px;cursor:pointer;font-weight:700;font-size:.9rem">Keep Going! 💪</button>`;
+      document.body.appendChild(div);
+      setTimeout(()=>{if(div.parentNode)div.remove();},8000);
+    },500);
+  }
+}
+
+// ============================================================
+// QUOTES CSV IMPORT (Settings)
+// ============================================================
+function showQuoteImportModal(){
+  openModal(`
+  <div class="modal-header"><div class="modal-title">Import Motivational Quotes</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div class="import-instructions">
+      One quote per line. Plain text file or CSV with a single column.<br>
+      <em>Example:</em><br>
+      The secret of getting ahead is getting started.<br>
+      One step at a time leads to mountains climbed.
+    </div>
+    <div class="file-drop" onclick="document.getElementById('quote-file-input').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <p>Click to select .csv or .txt file</p>
+    </div>
+    <input type="file" id="quote-file-input" accept=".csv,.txt,text/plain" style="display:none" onchange="handleQuoteFile(this)">
+    <div style="margin-top:12px;color:var(--text3);font-size:.75rem">Currently loaded: ${(state.settings.motivationalQuotes||[]).length||'default'} quotes</div>
+    <div style="margin-top:8px">
+      <button class="btn btn-ghost btn-sm" onclick="resetQuotes()">↺ Reset to Defaults</button>
+    </div>
+  </div>`);
+}
+async function handleQuoteFile(input){
+  const f=input.files[0];if(!f)return;
+  const text=await f.text();
+  const quotes=text.split('\n').map(l=>l.replace(/^"|"$/g,'').trim()).filter(l=>l.length>5);
+  state.settings.motivationalQuotes=quotes;
+  await saveSettings(state.settings);
+  closeModal();showToast(quotes.length+' quotes loaded!','success');
+}
+async function resetQuotes(){
+  delete state.settings.motivationalQuotes;
+  await saveSettings(state.settings);
+  closeModal();showToast('Reset to default quotes','info');
+}
+
+// ============================================================
+// PDF SESSION REPORT EXPORT
+// ============================================================
+function exportSessionReport(targetDay){
+  targetDay=targetDay||todayRamadanDay();
+  const sessions=state.sessions.filter(s=>s.ramadanDay===targetDay);
+  const calDate=ramadanDayToCalendar(targetDay);
+  const calStr=calDate?calDate.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):'';
+  const totalMin=sessions.reduce(function(a,s){return a+s.durationMinutes;},0);
+  const targetMin=state.settings.dailyTargetMinutes||480;
+  const pct=Math.min(100,Math.round(totalMin/targetMin*100));
+  const bySubject={};
+  sessions.forEach(function(s){
+    var t=getTask(s.taskId);if(!t)return;
+    var subj=getSubject(t.subjectId);
+    if(!bySubject[subj.id])bySubject[subj.id]={name:subj.name,color:subj.color,min:0,count:0};
+    bySubject[subj.id].min+=s.durationMinutes;bySubject[subj.id].count++;
+  });
+  var subjRows=Object.values(bySubject).sort(function(a,b){return b.min-a.min;}).map(function(sb){
+    return '<tr><td style="padding:8px 12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+sb.color+';margin-right:8px"></span>'+sb.name+'</td><td style="padding:8px 12px;text-align:right;font-family:monospace">'+formatMin(sb.min)+'</td><td style="padding:8px 12px;text-align:right;color:#666">'+sb.count+' session'+(sb.count>1?'s':'')+'</td></tr>';
+  }).join('');
+  var sessRows=sessions.map(function(s){
+    var t=getTask(s.taskId);var subj=t?getSubject(t.subjectId):{name:'Unknown',color:'#888'};
+    var confIcon=s.confidenceRating==='struggling'?'Struggling':s.confidenceRating==='ok'?'OK':s.confidenceRating==='confident'?'Confident':'';
+    return '<tr><td style="padding:7px 12px;font-size:13px"><strong>'+(t?t.name:'Unknown')+'</strong><br><span style="color:#888;font-size:11px">'+subj.name+(t&&t.chapter?' - '+t.chapter:'')+'</span></td><td style="padding:7px 12px;text-align:right;font-family:monospace">'+formatMin(s.durationMinutes)+'</td><td style="padding:7px 12px;font-size:12px">'+confIcon+'</td><td style="padding:7px 12px;font-size:12px;color:#888">'+(s.isManual?'Manual':'Timer')+'</td></tr>';
+  }).join('');
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Study Report - Ramadan Day '+targetDay+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#fff;color:#1a1a1a}.header{background:linear-gradient(135deg,#0c0c1e,#1a1028);color:#fff;padding:32px 40px}.header h1{font-size:24px;font-weight:700;margin-bottom:4px}.date{color:rgba(255,255,255,0.6);font-size:14px;margin-bottom:20px}.hstats{display:flex;gap:24px;flex-wrap:wrap}.hstat{text-align:center;min-width:60px}.val{font-size:26px;font-weight:700;color:#e8a832;font-family:monospace}.lbl{font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}.pbar{height:6px;background:rgba(255,255,255,0.15);border-radius:3px;margin-top:20px}.pfill{height:100%;background:#e8a832;border-radius:3px;width:'+pct+'%}.plbl{font-size:12px;color:rgba(255,255,255,0.5);margin-top:6px}.body{padding:28px 40px}.sec{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 10px}table{width:100%;border-collapse:collapse}th{font-size:11px;color:#888;text-transform:uppercase;padding:6px 12px;text-align:left;border-bottom:2px solid #eee}tr{border-bottom:1px solid #f0f0f0}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center}@media print{body{margin:0}}</style></head><body>';
+  html+='<div class="header"><h1>Study Session Report</h1><div class="date">Ramadan Day '+targetDay+' &nbsp;&middot;&nbsp; '+calStr+'</div><div class="hstats"><div class="hstat"><div class="val">'+formatMin(totalMin)+'</div><div class="lbl">Studied</div></div><div class="hstat"><div class="val">'+sessions.length+'</div><div class="lbl">Sessions</div></div><div class="hstat"><div class="val">'+Object.keys(bySubject).length+'</div><div class="lbl">Subjects</div></div><div class="hstat"><div class="val">'+pct+'%</div><div class="lbl">Goal</div></div></div><div class="pbar"><div class="pfill"></div></div><div class="plbl">'+formatMin(totalMin)+' of '+formatMin(targetMin)+' daily target</div></div>';
+  html+='<div class="body"><div class="sec">By Subject</div><table><thead><tr><th>Subject</th><th style="text-align:right">Time</th><th style="text-align:right">Sessions</th></tr></thead><tbody>'+subjRows+'</tbody></table>';
+  html+='<div class="sec">Session Log</div><table><thead><tr><th>Task</th><th style="text-align:right">Duration</th><th>Confidence</th><th>Type</th></tr></thead><tbody>'+sessRows+'</tbody></table>';
+  html+='<div class="footer">Generated by Ramadan Study Tracker &middot; '+new Date().toLocaleString()+'</div></div></body></html>';
+  var win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(function(){win.print();},600);
+}
+
+function showExportReportModal(){
+  var curDay=todayRamadanDay()||studyStartDay();
+  var start=studyStartDay();var end=Math.min(curDay,studyEndDay());
+  var options=[];
+  for(var d=end;d>=start;d--){
+    var hasSess=state.sessions.some(function(s){return s.ramadanDay===d;});
+    if(hasSess)options.push('<option value="'+d+'"'+(d===curDay?' selected':'')+'>Day '+d+(d===curDay?' (today)':'')+'</option>');
+  }
+  if(!options.length){showToast('No sessions recorded yet','error');return;}
+  openModal('<div class="modal-header"><div class="modal-title">Export Session Report</div><button class="modal-close" onclick="closeModal()">X</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Select Day</label><select id="report-day-sel" class="form-input">'+options.join('')+'</select></div><div class="form-hint" style="margin-bottom:16px">Opens a printable report in a new tab. Use browser Print to save as PDF.</div><div style="display:flex;gap:8px"><button class="btn btn-primary" onclick="exportSessionReport(+document.getElementById('report-day-sel').value);closeModal()">Generate Report</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div></div>');
+}
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -136,6 +336,7 @@ body>*{position:relative;z-index:1}
 .badge-inprogress{background:var(--accent2);color:var(--accent)}
 .badge-notstarted{background:var(--surface3);color:var(--text3)}
 .badge-completed{background:var(--green2);color:var(--green)}
+.badge-revision{background:rgba(155,114,232,0.15);color:#9b72e8;border:1px solid rgba(155,114,232,0.25)}
 .badge-struggling{background:var(--red2);color:var(--red)}
 .badge-ok{background:var(--amber2);color:var(--amber)}
 .badge-confident{background:var(--green2);color:var(--green)}
@@ -498,6 +699,22 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .file-drop svg{width:28px;height:28px;color:var(--text3);margin-bottom:8px}
 .file-drop p{font-size:.85rem;color:var(--text3)}
 .file-drop small{font-size:.72rem;color:var(--text3);margin-top:4px;display:block}
+
+/* FOCUS MODE */
+#focus-overlay{position:fixed;inset:0;z-index:8000;background:radial-gradient(ellipse 100% 60% at 50% 30%,rgba(15,15,28,0.99) 0%,rgba(5,5,12,0.999) 100%);display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
+#focus-overlay.open{display:flex;animation:fadeIn .4s ease}
+.focus-task-name{font-family:var(--font-head);font-size:1.6rem;font-weight:700;color:var(--text);margin-bottom:6px;max-width:500px;line-height:1.3}
+.focus-subject-name{font-size:.88rem;color:var(--text3);margin-bottom:36px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+.focus-ring-wrap{position:relative;width:220px;height:220px;margin:0 auto 28px}
+.focus-ring-wrap svg{position:absolute;top:0;left:0;transform:rotate(-90deg)}
+.focus-big-time{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--font-mono);font-size:3rem;font-weight:700;color:var(--text)}
+.focus-controls{display:flex;gap:12px;margin-bottom:32px}
+.focus-quote{max-width:400px;font-style:italic;color:var(--text3);font-size:.82rem;line-height:1.8;border-left:3px solid var(--accent);padding-left:16px;text-align:left;min-height:54px;transition:opacity .4s}
+.focus-exit{position:absolute;top:18px;right:18px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:var(--text3);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;font-family:var(--font);transition:all .2s}
+.focus-exit:hover{color:var(--text);background:rgba(255,255,255,0.12)}
+.focus-pomo-bar{width:300px;max-width:80vw;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-bottom:6px;overflow:hidden}
+.focus-pomo-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 1s linear}
+.focus-pomo-label{font-size:.68rem;color:var(--text3);font-family:var(--font-mono);margin-bottom:28px}
 </style>
 </head>
 <body>
@@ -694,7 +911,8 @@ function taskRemainingMin(task){
   return Math.max(0,est-actual);
 }
 function subjectColor(subjectId){return(getSubject(subjectId)||{}).color||'#888'}
-function incomplete(t){return t.status!=='completed'}
+function incomplete(t){return t.status!=='completed'||t.needsRevision===true}
+function needsRevisionOnly(t){return t.status==='completed'&&t.needsRevision===true}
 function escapedHTML(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
 // ============================================================
@@ -756,6 +974,7 @@ async function saveSession(session){
   await ref.set(session);
   const idx=state.sessions.findIndex(s=>s.id===session.id);
   if(idx>=0)state.sessions[idx]=session;else state.sessions.push(session);
+  setTimeout(checkDailyGoalCelebration,300);
 }
 async function deleteSession(id){
   await db.collection('users').doc(state.uid).collection('sessions').doc(id).delete();
@@ -1006,19 +1225,58 @@ function getElapsedSeconds(){
   }
   return Math.floor((Date.now()-state.activeTimer.startMs-state.activeTimer.pausedMs)/1000);
 }
+function getPomodoroMins(){return state.settings.pomodoroMinutes||0;} // 0 = off
 function tickTimer(){
   const el=document.getElementById('timer-elapsed');const ring=document.getElementById('timer-ring-fill');
-  if(!el||!ring)return;
   const sec=getElapsedSeconds();
-  el.textContent=fmtTime(sec);
+  if(el)el.textContent=fmtTime(sec);
+
+  // Focus mode display update
+  const fm=document.getElementById('focus-timer');
+  if(fm)fm.textContent=fmtTime(sec);
+
+  // Pomodoro check
+  const pomMins=getPomodoroMins();
+  if(pomMins>0&&!state.activeTimer.paused&&!state.activeTimer._pomoBroken){
+    const pomSec=pomMins*60;
+    if(sec>0&&sec%pomSec===0){
+      // Pomodoro interval complete!
+      state.activeTimer._pomoBroken=true; // prevent multi-fire
+      setTimeout(()=>{state.activeTimer._pomoBroken=false;},2000);
+      pauseTimer();
+      playSound('streak');triggerHaptic('success');
+      showPomoBreakAlert(sec/pomSec);
+    }
+  }
+
+  if(!ring)return;
   const task=getTask(state.activeTimer.taskId);
   if(task){
-    const estSec=task.estimatedMinutes*60;
-    const prog=Math.min(1,sec/estSec);
+    const pomActive=pomMins>0;
+    const estSec=pomActive?pomMins*60:task.estimatedMinutes*60;
+    const displaySec=pomActive?sec%(pomMins*60)||pomMins*60:sec;
+    const prog=Math.min(1,displaySec/estSec);
     const circ=226;
     ring.style.strokeDashoffset=circ-(circ*prog);
-    ring.classList.toggle('over',sec>estSec);
+    ring.classList.toggle('over',!pomActive&&sec>estSec);
   }
+}
+function showPomoBreakAlert(interval){
+  const breakMins=interval%4===0?15:5;
+  const msg=interval%4===0?'Long break time! (15 min)':'Short break time! (5 min)';
+  // Show non-blocking toast + option to stop or continue
+  const div=document.createElement('div');
+  div.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9990;background:rgba(10,10,18,0.97);backdrop-filter:blur(32px);border:1px solid rgba(232,168,50,0.4);border-radius:20px;padding:28px 32px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.7);min-width:280px';
+  div.innerHTML=`<div style="font-size:2rem;margin-bottom:8px">☕</div>
+    <div style="font-family:var(--font-head);font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:6px">Pomodoro ${interval} Complete!</div>
+    <div style="color:var(--text2);font-size:.85rem;margin-bottom:20px">${msg}</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button onclick="this.closest('div[style]').remove();resumeTimer()" style="background:var(--accent);color:#000;border:none;padding:9px 20px;border-radius:10px;cursor:pointer;font-weight:600;font-size:.85rem">Skip Break ▶</button>
+      <button onclick="this.closest('div[style]').remove();stopTimer()" style="background:rgba(255,255,255,0.08);color:var(--text);border:1px solid rgba(255,255,255,0.15);padding:9px 20px;border-radius:10px;cursor:pointer;font-size:.85rem">End Session</button>
+    </div>`;
+  document.body.appendChild(div);
+  // Auto-remove after 60s
+  setTimeout(()=>{if(div.parentNode)div.remove();},60000);
 }
 async function stopTimer(skipDialog=false){
   playSound('stop');triggerHaptic('medium');
@@ -1172,6 +1430,7 @@ function renderDaily(){
             `<button class="btn btn-sm btn-primary" onclick="resumeTimer()">▶ Resume</button>`:
             `<button class="btn btn-sm btn-secondary" onclick="pauseTimer()">⏸ Pause</button>`}
           <button class="btn btn-sm btn-danger" onclick="stopTimer()">■ Stop</button>
+          <button class="btn btn-sm btn-ghost" onclick="openFocusMode()" title="Focus mode" style="font-size:.72rem">⊙ Focus</button>
         </div>
       </div>
     </div>`;
@@ -1221,7 +1480,8 @@ function renderTaskCard(task,showStart=false,showSkip=false){
   const daysUntil=task.isDeadlineTask&&task.deadlineDate?Math.ceil((new Date(task.deadlineDate)-new Date())/86400000):null;
 
   let statusBadge='';
-  if(task.status==='completed')statusBadge=`<span class="task-meta-badge badge-completed">✓ Done</span>`;
+  if(task.needsRevision)statusBadge=`<span class="task-meta-badge badge-revision">↻ Revision</span>`;
+  else if(task.status==='completed')statusBadge=`<span class="task-meta-badge badge-completed">✓ Done</span>`;
   else if(task.status==='in_progress')statusBadge=`<span class="task-meta-badge badge-inprogress">In Progress</span>`;
   else statusBadge=`<span class="task-meta-badge badge-notstarted">Not Started</span>`;
 
@@ -1469,7 +1729,7 @@ function renderStats(){
   else if(state.statsTab==='confidence')content=renderStatsConfidence();
   else if(state.statsTab==='sessions')content=renderStatsSessionLog();
 
-  el.innerHTML=`<div class="view-header"><div class="view-title">Statistics</div></div>${tabHtml}${content}`;
+  el.innerHTML=`<div class="view-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div class="view-title">Statistics</div><button class="btn btn-secondary btn-sm" onclick="showExportReportModal()">📄 Export Day Report</button></div>${tabHtml}${content}`;
   initStatsCharts();
 }
 function setStatsTab(t){
@@ -1809,6 +2069,26 @@ function renderSettings(){
   </div>
 
   <div class="settings-section">
+    <div class="settings-section-title">Timer & Focus</div>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Pomodoro Interval (minutes)</label>
+          <input type="number" class="form-input" value="${s.pomodoroMinutes||0}" min="0" max="120" onchange="updateSetting('pomodoroMinutes',+this.value)" style="max-width:110px">
+          <div class="form-hint">0 = disabled. 25 or 50 recommended. Timer auto-pauses and alerts you at each interval.</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="form-label" style="margin-bottom:8px">Motivational Quotes (shown in Focus Mode)</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="showQuoteImportModal()">Import Quotes CSV</button>
+          <span style="font-size:.72rem;color:var(--text3)">${(s.motivationalQuotes||[]).length||'14 default'} quotes loaded</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
     <div class="settings-section-title">Algorithm Weights <span style="font-weight:400;color:var(--text3);font-size:.75rem;text-transform:none">(must sum to 1.0)</span></div>
     <div class="card">
       <div class="slider-row">
@@ -2073,9 +2353,17 @@ function openTaskDetail(taskId){
 async function markTaskComplete(taskId){
   const t=getTask(taskId);
   await updateTaskStatus(taskId,'completed');
+  if(t){t.needsRevision=false;await saveTask(t);}
   closeModal();
   if(t)celebrateTaskComplete(t.name);
   renderView(state.currentView);
+}
+async function toggleRevision(taskId){
+  const t=getTask(taskId);if(!t)return;
+  t.needsRevision=!t.needsRevision;
+  await saveTask(t);
+  playSound(t.needsRevision?'pop':'log');triggerHaptic('light');
+  closeModal();renderView(state.currentView);
 }
 
 function showLogSessionModal(taskId){
@@ -2180,8 +2468,9 @@ function showPostSessionDialog(taskId,durationMinutes){
       <button class="conf-btn ok" onclick="finalizeSession('${taskId}',${durationMinutes},'ok')">🙂 OK</button>
       <button class="conf-btn confident" onclick="finalizeSession('${taskId}',${durationMinutes},'confident')">💪 Confident</button>
     </div>
-    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
-      <button class="btn btn-primary" onclick="finalizeSession('${taskId}',${durationMinutes},null,true)">Mark Complete</button>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="finalizeSession('${taskId}',${durationMinutes},null,true)">✓ Mark Complete</button>
+      <button class="btn btn-secondary" onclick="finalizeSession('${taskId}',${durationMinutes},null,'revision')" style="background:rgba(155,114,232,0.15);border-color:rgba(155,114,232,0.3);color:#9b72e8">↻ Needs Revision</button>
       <button class="btn btn-ghost" onclick="finalizeSession('${taskId}',${durationMinutes},null,false)">Continue Later</button>
     </div>
   </div>`;
@@ -2194,8 +2483,14 @@ async function finalizeSession(taskId,dur,conf,markComplete=null){
   const task=getTask(taskId);
   if(markComplete===true){
     await updateTaskStatus(taskId,'completed');
-    closeModal();
-    if(task)celebrateTaskComplete(task.name);
+    if(task){task.needsRevision=false;await saveTask(task);}
+    closeModal();if(task)celebrateTaskComplete(task.name);
+    renderView(state.currentView);delete window._pendingSession;return;
+  }else if(markComplete==='revision'){
+    await updateTaskStatus(taskId,'completed');
+    if(task){task.needsRevision=true;await saveTask(task);}
+    closeModal();showToast('Marked for revision — will reappear in queue','info');
+    playSound('pop');triggerHaptic('medium');
     renderView(state.currentView);delete window._pendingSession;return;
   }else if(markComplete===null&&!conf){// just confidence, no completion
   }else{await updateTaskStatus(taskId,'in_progress');}
@@ -2788,5 +3083,26 @@ function celebrateTaskComplete(taskName){
   showToast('Completed: '+taskName,'success');
 }
 </script>
+
+<div id="focus-overlay">
+  <button class="focus-exit" onclick="closeFocusMode()">✕ Exit Focus</button>
+  <div id="focus-subject-name" class="focus-subject-name"></div>
+  <div id="focus-task-name" class="focus-task-name"></div>
+  <div class="focus-ring-wrap">
+    <svg width="220" height="220" viewBox="0 0 220 220">
+      <circle cx="110" cy="110" r="100" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="8"/>
+      <circle id="focus-ring" cx="110" cy="110" r="100" fill="none" stroke="var(--accent)" stroke-width="8"
+        stroke-dasharray="628" stroke-dashoffset="628" stroke-linecap="round" style="transition:stroke-dashoffset .5s linear"/>
+    </svg>
+    <div id="focus-timer" class="focus-big-time">00:00</div>
+  </div>
+  <div class="focus-pomo-bar"><div id="focus-pomo-fill" class="focus-pomo-fill" style="width:0%"></div></div>
+  <div id="focus-pomo-label" class="focus-pomo-label">Focus</div>
+  <div class="focus-controls">
+    <button id="focus-pause-btn" class="btn btn-secondary" onclick="focusPauseResume()">⏸ Pause</button>
+    <button class="btn" style="background:rgba(232,92,92,0.15);color:var(--red);border:1px solid rgba(232,92,92,0.25)" onclick="stopTimer();closeFocusMode()">■ Stop</button>
+  </div>
+  <div id="focus-quote" class="focus-quote"></div>
+</div>
 </body>
 </html>
