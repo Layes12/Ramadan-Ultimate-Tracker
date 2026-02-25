@@ -594,9 +594,11 @@ function ramadanDayToCalendar(day){
 }
 function calendarStr(date){if(!date)return'—';const d=new Date(date);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
 function todayRamadanDay(){return ramadanDay(new Date())}
+function studyStartDay(){return state.settings.studyStartDay||1;}
+function studyEndDay(){return state.settings.studyEndDay||30;}
 function daysRemaining(){
-  const cur=todayRamadanDay();if(!cur)return 22;
-  return Math.max(0,(state.settings.studyEndDay||28)-cur);
+  const cur=todayRamadanDay();if(!cur)return studyEndDay()-studyStartDay();
+  return Math.max(0,studyEndDay()-cur);
 }
 function getSubject(id){return state.subjects.find(s=>s.id===id)||{name:'Unknown',color:'#888',id}}
 function getTask(id){return state.tasks.find(t=>t.id===id)}
@@ -951,7 +953,7 @@ function renderDaily(){
     <div class="metric-card">
       <div class="metric-label">Days Remaining</div>
       <div class="metric-value">${dr}</div>
-      <div class="metric-sub">until Day ${state.settings.studyEndDay||28}</div>
+      <div class="metric-sub">until Day ${studyEndDay()}</div>
     </div>
     <div class="metric-card ${reqClass}">
       <div class="metric-label">Required Daily</div>
@@ -1210,12 +1212,12 @@ function renderStatsOverview(){
   const totalStudied=state.sessions.reduce((a,s)=>a+s.durationMinutes,0);
   const completed=state.tasks.filter(t=>t.status==='completed').length;
   const total=state.tasks.length;
-  const avgDaily=totalStudied/Math.max(1,(todayRamadanDay()||7)-(state.settings.studyStartDay||7)+1);
+  const avgDaily=totalStudied/Math.max(1,(todayRamadanDay()||studyStartDay())-studyStartDay()+1);
 
   // Streak calc
   let streak=0,maxStreak=0,cur=0;
   const target=(state.settings.dailyTargetMinutes||480);
-  const startDay=state.settings.studyStartDay||7;
+  const startDay=studyStartDay();
   const curDay=todayRamadanDay()||startDay;
   for(let d=startDay;d<=curDay;d++){
     const dayMin=state.sessions.filter(s=>s.ramadanDay===d).reduce((a,s)=>a+s.durationMinutes,0);
@@ -1256,8 +1258,8 @@ function renderStatsOverview(){
   </div>`;
 }
 function renderStatsDaily(){
-  const startDay=state.settings.studyStartDay||7;
-  const endDay=state.settings.studyEndDay||28;
+  const startDay=studyStartDay();
+  const endDay=studyEndDay();
   const curDay=todayRamadanDay()||startDay;
   const target=state.settings.dailyTargetMinutes||480;
   const days=[];const hours=[];const reqLine=[];
@@ -1381,7 +1383,7 @@ function initStatsCharts(){
       state.charts.comp=new Chart(el2,{type:'bar',data:{labels:data.map(s=>s.name),datasets:[{label:'Done',data:data.map(s=>state.tasks.filter(t=>t.subjectId===s.id&&t.status==='completed').length),backgroundColor:data.map(s=>s.color+'cc')},{label:'Remaining',data:data.map(s=>state.tasks.filter(t=>t.subjectId===s.id&&incomplete(t)).length),backgroundColor:data.map(s=>s.color+'33')}]},options:{responsive:true,scales:{x:{stacked:true,ticks:{color:'#6b6b75',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{stacked:true,ticks:{color:'#6b6b75'},grid:{color:'rgba(255,255,255,0.04)'}}},plugins:{legend:{labels:{color:'#9898a4',font:{size:11}}}}}});
     }
   }else if(tab==='daily'){
-    const startDay=state.settings.studyStartDay||7;const endDay=state.settings.studyEndDay||28;const curDay=todayRamadanDay()||startDay;const target=state.settings.dailyTargetMinutes||480;
+    const startDay=studyStartDay();const endDay=studyEndDay();const curDay=todayRamadanDay()||startDay;const target=state.settings.dailyTargetMinutes||480;
     const days=[];const hoursArr=[];const reqArr=[];
     for(let d=startDay;d<=Math.min(curDay,endDay);d++){
       days.push(`D${d}`);
@@ -1468,11 +1470,11 @@ function renderSettings(){
       <div class="form-row" style="margin-top:12px">
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">Study Start Day</label>
-          <input type="number" class="form-input" value="${s.studyStartDay||7}" min="1" max="30" onchange="updateSetting('studyStartDay',+this.value)">
+          <input type="number" class="form-input" value="${s.studyStartDay||1}" min="1" max="30" onchange="updateSetting('studyStartDay',+this.value)">
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label">Study End Day</label>
-          <input type="number" class="form-input" value="${s.studyEndDay||28}" min="1" max="30" onchange="updateSetting('studyEndDay',+this.value)">
+          <input type="number" class="form-input" value="${s.studyEndDay||30}" min="1" max="30" onchange="updateSetting('studyEndDay',+this.value)">
         </div>
       </div>
     </div>
@@ -1736,7 +1738,7 @@ async function markTaskComplete(taskId){
 
 function showLogSessionModal(taskId){
   const task=getTask(taskId);if(!task)return;
-  const today=todayRamadanDay()||7;
+  const today=todayRamadanDay()||studyStartDay();
   openModal(`
   <div class="modal-header"><div class="modal-title">Log Session</div><button class="modal-close" onclick="closeModal()">✕</button></div>
   <div class="modal-body">
@@ -1796,7 +1798,7 @@ function showBatchLogModal(){
 let batchRowCount=2;
 function batchRowHtml(i){
   const taskOpts=state.tasks.map(t=>`<option value="${t.id}">${getSubject(t.subjectId).name} — ${t.name.slice(0,40)}</option>`).join('');
-  const today=todayRamadanDay()||7;
+  const today=todayRamadanDay()||studyStartDay();
   return`<div class="form-row" style="margin-bottom:8px" id="batch-row-${i}">
     <select class="form-select" id="br-task-${i}" style="flex:2">${taskOpts}</select>
     <input type="number" class="form-input" id="br-dur-${i}" placeholder="min" min="1" style="width:80px">
@@ -2056,7 +2058,7 @@ async function confirmReset(){
 function showSetup(){
   document.getElementById('app-shell').style.display='none';
   state.setupStep=0;
-  state.setupData={ramadanStartDate:'',studyStartDay:7,studyEndDay:28,dailyTargetMinutes:480,subjects:[...state.subjects.length?state.subjects:DEFAULT_SUBJECTS]};
+  state.setupData={ramadanStartDate:'',studyStartDay:state.settings.studyStartDay||1,studyEndDay:state.settings.studyEndDay||30,dailyTargetMinutes:480,subjects:[...state.subjects.length?state.subjects:DEFAULT_SUBJECTS]};
   document.getElementById('setup-overlay').classList.add('open');
   renderSetupStep();
 }
@@ -2144,7 +2146,7 @@ function setupNext(){
 function setupBack(){state.setupStep=Math.max(0,state.setupStep-1);renderSetupStep();}
 async function finishSetup(){
   const sd=state.setupData;
-  const settings={ramadanStartDate:sd.ramadanStartDate,studyStartDay:sd.studyStartDay||7,studyEndDay:sd.studyEndDay||28,dailyTargetMinutes:sd.dailyTargetMinutes||480,avoidanceThresholdDays:3,algorithmWeights:{deadlineUrgency:.4,avoidance:.3,momentum:.2,subjectRotation:.1}};
+  const settings={ramadanStartDate:sd.ramadanStartDate,studyStartDay:sd.studyStartDay||1,studyEndDay:sd.studyEndDay||30,dailyTargetMinutes:sd.dailyTargetMinutes||480,avoidanceThresholdDays:3,algorithmWeights:{deadlineUrgency:.4,avoidance:.3,momentum:.2,subjectRotation:.1}};
   await saveSettings(settings);
   await saveSubjects(sd.subjects);
   await markSetupComplete();
