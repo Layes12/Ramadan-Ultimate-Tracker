@@ -6,7 +6,8 @@
 <title>Ramadan Study Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&family=Hind+Siliguri:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script>
 // ============================================================
 // FOCUS MODE
 // ============================================================
@@ -42,6 +43,13 @@ function openFocusMode(){
   document.getElementById('focus-subject-name').textContent=subj.name;
   // Set accent ring color
   document.getElementById('focus-ring').style.stroke=subj.color||'var(--accent)';
+  // Sticky note
+  const stickyEl=document.getElementById('focus-sticky');
+  const stickyText=document.getElementById('focus-sticky-text');
+  if(task&&task.stickyNote&&stickyEl&&stickyText){
+    stickyText.textContent=task.stickyNote;
+    stickyEl.style.display='block';
+  }else if(stickyEl){stickyEl.style.display='none';}
   ov.classList.add('open');
   updateFocusDisplay();
   rotateFocusQuote();
@@ -700,6 +708,45 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .file-drop p{font-size:.85rem;color:var(--text3)}
 .file-drop small{font-size:.72rem;color:var(--text3);margin-top:4px;display:block}
 
+/* DAILY DIGEST */
+.digest-overlay{position:fixed;inset:0;z-index:7000;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
+.digest-overlay.open{display:flex;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.digest-card{background:linear-gradient(160deg,#0c0c1e 0%,#0a0a18 100%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;width:100%;max-width:640px;overflow:hidden;margin:auto;box-shadow:0 32px 80px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.07)}
+.digest-hero{padding:36px 32px 28px;text-align:center;border-bottom:1px solid rgba(255,255,255,.07);background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(var(--accent-r),var(--accent-g),var(--accent-b),.1) 0%,transparent 70%)}
+.digest-hero-time{font-family:var(--font-mono);font-size:4rem;font-weight:700;color:var(--accent);line-height:1;letter-spacing:-.02em}
+.digest-hero-label{font-size:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-top:6px}
+.digest-hero-title{font-family:var(--font-head);font-size:1.5rem;font-weight:700;color:var(--text);margin:16px 0 4px}
+.digest-hero-sub{font-size:.82rem;color:var(--text3);line-height:1.5}
+.digest-section{padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.05)}
+.digest-section:last-child{border-bottom:none}
+.digest-section-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:14px}
+.digest-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.digest-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 10px;text-align:center}
+.digest-stat-val{font-family:var(--font-mono);font-size:1.25rem;font-weight:700;color:var(--text)}
+.digest-stat-lbl{font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+.digest-stat-delta{font-size:.65rem;font-family:var(--font-mono);margin-top:2px}
+.digest-stat-delta.up{color:var(--green)}
+.digest-stat-delta.down{color:var(--red)}
+.digest-stat-delta.same{color:var(--text3)}
+.digest-session-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.digest-session-row:last-child{border-bottom:none}
+.digest-subj-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.digest-bar-track{flex:1;height:7px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+.digest-bar-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.digest-tomorrow-task{display:flex;align-items:flex-start;gap:10px;background:rgba(var(--accent-r),var(--accent-g),var(--accent-b),.06);border:1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),.15);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.digest-badge{display:inline-flex;align-items:center;gap:4px;font-size:.65rem;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.digest-badge.green{background:rgba(77,190,140,.15);color:var(--green);border:1px solid rgba(77,190,140,.25)}
+.digest-badge.red{background:rgba(232,92,92,.15);color:var(--red);border:1px solid rgba(232,92,92,.25)}
+.digest-badge.amber{background:rgba(240,192,64,.15);color:var(--amber);border:1px solid rgba(240,192,64,.25)}
+.digest-badge.accent{background:rgba(var(--accent-r),var(--accent-g),var(--accent-b),.15);color:var(--accent);border:1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),.25)}
+.digest-award{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.03);border-radius:10px;padding:10px 12px;margin-bottom:7px}
+.digest-award-icon{font-size:1.5rem;flex-shrink:0}
+.digest-award-text{font-size:.8rem;color:var(--text2);line-height:1.5}
+.digest-award-text strong{color:var(--text);font-weight:600}
+.digest-close-btn{display:block;width:calc(100% - 56px);margin:20px 28px;padding:13px;background:var(--accent);color:#000;border:none;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;font-family:var(--font);transition:filter .15s}
+.digest-close-btn:hover{filter:brightness(1.1)}
+
 /* FOCUS MODE */
 #focus-overlay{position:fixed;inset:0;z-index:8000;background:radial-gradient(ellipse 100% 60% at 50% 30%,rgba(15,15,28,0.99) 0%,rgba(5,5,12,0.999) 100%);display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center}
 #focus-overlay.open{display:flex;animation:fadeIn .4s ease}
@@ -867,6 +914,7 @@ let state = {
   taskFilter: {subject: 'all', status: 'all', search: ''},
   statsTab: 'overview',
   manualTimerStart: null,
+  reviewCycleIndex: 0,
 };
 
 // ============================================================
@@ -1159,11 +1207,21 @@ function generateTonightQueue(){
   const allRanked=generateDailyQueue();
   const afterSeq=applySequentialFilter(allRanked);
   const full=afterSeq.filter(t=>!skipped.has(t.id));
+  // Subject time caps: track already-studied minutes per subject tonight
+  const caps=state.settings.subjectDailyCaps||{};
+  const subjSpent={};
+  state.subjects.forEach(s=>{
+    const todayRD=todayRamadanDay();
+    subjSpent[s.id]=state.sessions.filter(ss=>{const t=getTask(ss.taskId);return t&&t.subjectId===s.id&&ss.ramadanDay===todayRD}).reduce((a,ss)=>a+ss.durationMinutes,0);
+  });
   // Fill up to budget, always include pinned deadline tasks regardless
   const queue=[];let acc=0;
   for(const t of full){
     const rem=Math.max(1,Math.round((t.estimatedMinutes||30)*(getCalibrationCoefficient(t.subjectId)||1)-taskActualMin(t.id)));
     const isPinned=t.isDeadlineTask&&t.deadlineDate&&Math.ceil((new Date(t.deadlineDate)-new Date())/86400000)<=5;
+    const cap=caps[t.subjectId]||0;
+    const capExceeded=cap>0&&(subjSpent[t.subjectId]||0)>=(cap);
+    if(capExceeded&&!isPinned)continue;
     if(isPinned||acc<budget){
       queue.push(t);
       acc+=rem;
@@ -1357,8 +1415,15 @@ function renderDaily(){
 
   let html=`
   <div class="view-header">
-    <div class="view-title">Tonight's Session</div>
-    <div class="ramadan-day-display">☽ Ramadan Day ${curDay||'—'} &nbsp;·&nbsp; ${calDate}</div>
+    <div>
+      <div class="view-title">Tonight's Session</div>
+      <div class="ramadan-day-display">☽ Ramadan Day ${curDay||'—'} &nbsp;·&nbsp; ${calDate}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+      <button class="btn btn-primary btn-sm" onclick="showDailyDigest()" style="font-size:.78rem">🌙 End of Night</button>
+      <button class="btn btn-secondary btn-sm" onclick="showSmartReschedule()" title="Smart Reschedule">🗓️ Reschedule</button>
+      ${state.sessions.length?`<button class="btn btn-ghost btn-sm" onclick="showExportReportModal()" title="Export PDF">📄 Export</button>`:''}
+    </div>
   </div>
 
   <div class="metrics-row">
@@ -1637,22 +1702,15 @@ function renderTasks(){
 
 // Draggable task card wrapper
 function renderTaskCardDraggable(task){
-  const DRAG_ICON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>`;
   const inner=renderTaskCard(task,true);
-  // Wrap with drag handle prepended
-  const withHandle=inner.replace('<div class="task-card-top">',
-    `<div class="drag-handle" draggable="false" title="Drag to reorder" 
-      onmousedown="initTaskDrag(event,'${task.id}')"
-      ontouchstart="initTaskDragTouch(event,'${task.id}')">${DRAG_ICON}</div><div class="task-card-top">`
-  );
-  // Add drag events to the card itself
-  return withHandle.replace(`class="task-card`,
+  // Add drag events to the card itself (no handle element needed - whole card is draggable)
+  return inner.replace(`class="task-card`,
     `draggable="true" data-task-id="${task.id}" ondragstart="onTaskDragStart(event,'${task.id}')" ondragover="onTaskDragOver(event,'${task.id}')" ondrop="onTaskDrop(event,'${task.id}')" ondragleave="onTaskDragLeave(event,'${task.id}')" class="task-card`
   );
 }
 
 // ── Drag handlers: TASK ─────────────────────────────────────
-function onTaskDragStart(e,taskId){drag.active=taskId;drag.type='task';e.dataTransfer.effectAllowed='move';playSound('tap');}
+function onTaskDragStart(e,taskId){e.stopPropagation();drag.active=taskId;drag.type='task';e.dataTransfer.effectAllowed='move';playSound('tap');}
 function onTaskDragOver(e,taskId){e.preventDefault();if(drag.type!=='task'||drag.active===taskId)return;e.currentTarget.classList.add('drag-over');}
 function onTaskDragLeave(e,taskId){e.currentTarget.classList.remove('drag-over');}
 async function onTaskDrop(e,targetId){
@@ -1719,8 +1777,17 @@ function filterTasksByAvoided(){
 // ============================================================
 function renderStats(){
   const el=document.getElementById('view-stats');
+  // Build tab list — include 'review' tab only if at least one cycle is complete
+  const completedCycles=get3DayCycles().filter(c=>c.complete);
   const tabs=['overview','daily','subjects','confidence','sessions'];
-  const tabHtml=`<div class="tabs">${tabs.map(t=>`<button class="tab${state.statsTab===t?' active':''}" onclick="setStatsTab('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('')}</div>`;
+  if(completedCycles.length)tabs.push('review');
+  tabs.push('heatmap','readiness');
+
+  const tabLabels={overview:'Overview',daily:'Daily',subjects:'Subjects',confidence:'Confidence',sessions:'Sessions',review:'3-Day Review',heatmap:'Heatmap',readiness:'Readiness'};
+  const tabHtml=`<div class="tabs" style="flex-wrap:wrap">${tabs.map(t=>`<button class="tab${state.statsTab===t?' active':''}" onclick="setStatsTab('${t}')">${tabLabels[t]}</button>`).join('')}</div>`;
+
+  // If the previously-selected tab is no longer available, fall back to overview
+  if(!tabs.includes(state.statsTab))state.statsTab='overview';
 
   let content='';
   if(state.statsTab==='overview')content=renderStatsOverview();
@@ -1728,6 +1795,9 @@ function renderStats(){
   else if(state.statsTab==='subjects')content=renderStatsSubjects();
   else if(state.statsTab==='confidence')content=renderStatsConfidence();
   else if(state.statsTab==='sessions')content=renderStatsSessionLog();
+  else if(state.statsTab==='review')content=renderStatsReview();
+  else if(state.statsTab==='heatmap')content=renderStatsHeatmap();
+  else if(state.statsTab==='readiness')content=renderStatsReadiness();
 
   el.innerHTML=`<div class="view-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div class="view-title">Statistics</div><button class="btn btn-secondary btn-sm" onclick="showExportReportModal()">📄 Export Day Report</button></div>${tabHtml}${content}`;
   initStatsCharts();
@@ -1745,20 +1815,31 @@ function renderStatsOverview(){
   const total=state.tasks.length;
   const avgDaily=totalStudied/Math.max(1,(todayRamadanDay()||studyStartDay())-studyStartDay()+1);
 
-  // Streak calc
+  // Streak calc with streak shield (1 grace day per week)
   let streak=0,maxStreak=0,cur=0;
   const target=(state.settings.dailyTargetMinutes||480);
   const startDay=studyStartDay();
   const curDay=todayRamadanDay()||startDay;
+  const shieldUsed={}; // week# -> bool
+  function weekOf(d){return Math.floor((d-startDay)/7);}
+  function dayHitsTarget(d){return state.sessions.filter(s=>s.ramadanDay===d).reduce((a,s)=>a+s.durationMinutes,0)>=target;}
   for(let d=startDay;d<=curDay;d++){
-    const dayMin=state.sessions.filter(s=>s.ramadanDay===d).reduce((a,s)=>a+s.durationMinutes,0);
-    if(dayMin>=target){cur++;maxStreak=Math.max(maxStreak,cur);}else cur=0;
+    const hit=dayHitsTarget(d);
+    const wk=weekOf(d);
+    if(hit){cur++;maxStreak=Math.max(maxStreak,cur);}
+    else if(!shieldUsed[wk]){shieldUsed[wk]=true;/* grace day — streak survives */maxStreak=Math.max(maxStreak,cur);}
+    else{cur=0;}
   }
-  // current streak from end
+  // current streak from end (with shield)
+  const shieldForCurrent={};
   for(let d=curDay;d>=startDay;d--){
-    const dayMin=state.sessions.filter(s=>s.ramadanDay===d).reduce((a,s)=>a+s.durationMinutes,0);
-    if(dayMin>=target)streak++;else break;
+    const hit=dayHitsTarget(d);
+    const wk=weekOf(d);
+    if(hit)streak++;
+    else if(!shieldForCurrent[wk]){shieldForCurrent[wk]=true;/* grace day */}
+    else break;
   }
+  const shieldAvailableThisWeek=!shieldForCurrent[weekOf(curDay)];
 
   const subjectHours=state.subjects.map(s=>{
     const min=state.sessions.filter(ss=>{const t=getTask(ss.taskId);return t&&t.subjectId===s.id}).reduce((a,ss)=>a+ss.durationMinutes,0);
@@ -1776,7 +1857,7 @@ function renderStatsOverview(){
   return`<div class="stats-grid">
     <div class="stat-card"><div class="stat-label">Total Studied</div><div class="stat-value">${fmtHours(totalStudied)}h</div><div class="stat-sub">${totalStudied} min total</div></div>
     <div class="stat-card"><div class="stat-label">Tasks Done</div><div class="stat-value">${completed}</div><div class="stat-sub">of ${total} total</div></div>
-    <div class="stat-card"><div class="stat-label">Current Streak</div><div class="stat-value">${streak}</div><div class="stat-sub">days hitting target</div></div>
+    <div class="stat-card"><div class="stat-label">Current Streak</div><div class="stat-value">${streak}</div><div class="stat-sub">days hitting target ${shieldAvailableThisWeek?'🛡️ Shield ready':'🛡️ Shield used'}</div></div>
     <div class="stat-card"><div class="stat-label">Best Streak</div><div class="stat-value">${maxStreak}</div><div class="stat-sub">consecutive days</div></div>
     <div class="stat-card"><div class="stat-label">Avg Daily</div><div class="stat-value">${fmtHours(avgDaily)}h</div><div class="stat-sub">per study day</div></div>
     <div class="stat-card"><div class="stat-label">Best Subject</div><div class="stat-value" style="font-size:1rem">${bestSubj.name}</div><div class="stat-sub">most time invested</div></div>
@@ -1910,6 +1991,320 @@ async function confirmDeleteSession(id){
   if(!confirm('Delete this session?'))return;
   await deleteSession(id);
   renderStats();
+}
+
+// ============================================================
+// 3-DAY REVIEW CYCLES
+// ============================================================
+function get3DayCycles(){
+  const startDay=studyStartDay();
+  const curDay=todayRamadanDay()||startDay;
+  const cycles=[];
+  let d=startDay;
+  while(d<=curDay){
+    const from=d;const to=d+2;
+    cycles.push({from,to,complete:curDay>to});
+    d+=3;
+  }
+  return cycles;
+}
+
+function renderStatsReview(){
+  if(!state.reviewCycleIndex)state.reviewCycleIndex=0;
+  const cycles=get3DayCycles().filter(c=>c.complete);
+  if(!cycles.length)return`<div class="empty-state"><p>No complete 3-day cycles yet.</p></div>`;
+
+  // clamp index
+  state.reviewCycleIndex=Math.max(0,Math.min(cycles.length-1,state.reviewCycleIndex));
+  const cycle=cycles[state.reviewCycleIndex];
+  const{from,to}=cycle;
+  const isNewest=state.reviewCycleIndex===cycles.length-1;
+  const isOldest=state.reviewCycleIndex===0;
+
+  const sessions=state.sessions.filter(s=>s.ramadanDay>=from&&s.ramadanDay<=to);
+  const totalMin=sessions.reduce((a,s)=>a+s.durationMinutes,0);
+  const dayTarget=state.settings.dailyTargetMinutes||480;
+  const periodTarget=dayTarget*3;
+  const pct=Math.min(100,Math.round(totalMin/periodTarget*100));
+
+  // Per-day breakdown
+  const dayRows=[from,from+1,to].map(d=>{
+    const dMin=sessions.filter(s=>s.ramadanDay===d).reduce((a,s)=>a+s.durationMinutes,0);
+    const hit=dMin>=dayTarget;
+    const bar=Math.min(100,Math.round(dMin/dayTarget*100));
+    return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--text3);width:46px;flex-shrink:0">Day ${d}</div>
+      <div style="flex:1;height:10px;background:var(--surface3);border-radius:5px;overflow:hidden">
+        <div style="width:${bar}%;height:100%;background:${hit?'var(--green)':'var(--accent)'};border-radius:5px"></div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:.72rem;width:40px;text-align:right;color:${hit?'var(--green)':'var(--text3)'}">${formatMin(dMin)}</div>
+      <div style="font-size:.7rem;width:16px">${hit?'✓':'·'}</div>
+    </div>`;
+  }).join('');
+
+  // Subject breakdown
+  const subjData={};
+  sessions.forEach(s=>{
+    const t=getTask(s.taskId);if(!t)return;
+    const sub=getSubject(t.subjectId);
+    if(!subjData[sub.id])subjData[sub.id]={name:sub.name,color:sub.color,min:0,sessions:0};
+    subjData[sub.id].min+=s.durationMinutes;
+    subjData[sub.id].sessions++;
+  });
+  const sortedSubj=Object.values(subjData).sort((a,b)=>b.min-a.min);
+  const most=sortedSubj[0];
+  const least=sortedSubj[sortedSubj.length-1];
+
+  const subjBars=sortedSubj.map(s=>{
+    const w=totalMin>0?Math.round((s.min/totalMin)*100):0;
+    return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="width:76px;font-size:.72rem;color:var(--text2);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
+      <div style="flex:1;height:9px;background:var(--surface3);border-radius:4px;overflow:hidden">
+        <div style="width:${w}%;height:100%;background:${s.color};border-radius:4px"></div>
+      </div>
+      <div style="font-size:.7rem;font-family:var(--font-mono);color:var(--text3);width:38px">${formatMin(s.min)}</div>
+    </div>`;
+  }).join('');
+
+  // Estimation accuracy for tasks completed this cycle
+  const completedThisCycle=state.tasks.filter(t=>t.status==='completed'&&t.dateCompleted>=from&&t.dateCompleted<=to);
+  let accuracyHtml='';
+  if(completedThisCycle.length>=2){
+    const ratios=completedThisCycle.map(t=>{const actual=taskActualMin(t.id);return actual>0&&t.estimatedMinutes>0?actual/t.estimatedMinutes:null;}).filter(Boolean);
+    if(ratios.length){
+      const avg=ratios.reduce((a,r)=>a+r,0)/ratios.length;
+      const msg=avg>1.2?`⚠️ Tasks took <strong>${(avg*100-100).toFixed(0)}% longer</strong> than estimated — raise your estimates.`:avg<0.8?`✅ Finishing <strong>${(100-avg*100).toFixed(0)}% faster</strong> than estimated — estimates may be conservative.`:`✅ Estimation accuracy is <strong>on point</strong> this cycle.`;
+      accuracyHtml=`<div style="padding:10px 12px;border-radius:8px;background:var(--surface2);font-size:.78rem;color:var(--text2);margin-top:12px">${msg}</div>`;
+    }
+  }
+
+  // Rebalancing note
+  const underStudied=sortedSubj.filter(s=>totalMin>0&&s.min<totalMin/Math.max(1,sortedSubj.length)*0.5);
+  const rebalHtml=`<div style="margin-top:10px;padding:10px 12px;background:var(--accent3);border:1px solid rgba(var(--accent-r),var(--accent-g),var(--accent-b),0.2);border-radius:8px;font-size:.78rem;color:var(--text2)">
+    💡 ${underStudied.length?`Consider more time for: <strong>${underStudied.map(s=>s.name).join(', ')}</strong>`:'Balance looks good this cycle.'}
+  </div>`;
+
+  return`
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <button class="btn btn-secondary btn-sm" onclick="state.reviewCycleIndex--;renderStats()" ${isOldest?'disabled style="opacity:.3"':''}>← Older</button>
+    <div style="text-align:center">
+      <div style="font-family:var(--font-head);font-size:.95rem;font-weight:700;color:var(--text)">Days ${from} – ${to}</div>
+      <div style="font-size:.68rem;color:var(--text3);font-family:var(--font-mono)">Cycle ${state.reviewCycleIndex+1} of ${cycles.length}</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="state.reviewCycleIndex++;renderStats()" ${isNewest?'disabled style="opacity:.3"':''}>Newer →</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">Total Studied</div><div class="stat-value" style="font-size:1.1rem">${formatMin(totalMin)}</div><div class="stat-sub">of ${formatMin(periodTarget)} target</div></div>
+    <div class="stat-card"><div class="stat-label">Goal</div><div class="stat-value" style="font-size:1.1rem;color:${pct>=100?'var(--green)':pct>=70?'var(--accent)':'var(--red)'}">${pct}%</div><div class="stat-sub">${sessions.length} sessions</div></div>
+    <div class="stat-card"><div class="stat-label">Subjects</div><div class="stat-value" style="font-size:1.1rem">${sortedSubj.length}</div><div class="stat-sub">studied</div></div>
+  </div>
+
+  ${most&&least&&most!==least?`<div style="display:flex;gap:10px;margin-bottom:14px">
+    <div style="flex:1;background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:.78rem">
+      <div style="color:var(--text3);margin-bottom:3px;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em">Most studied</div>
+      <div style="font-weight:600;color:var(--green)">${most.name}</div>
+      <div style="font-family:var(--font-mono);font-size:.75rem;color:var(--text3)">${formatMin(most.min)}</div>
+    </div>
+    <div style="flex:1;background:var(--surface2);border-radius:10px;padding:10px 12px;font-size:.78rem">
+      <div style="color:var(--text3);margin-bottom:3px;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em">Least studied</div>
+      <div style="font-weight:600;color:var(--amber)">${least.name}</div>
+      <div style="font-family:var(--font-mono);font-size:.75rem;color:var(--text3)">${formatMin(least.min)}</div>
+    </div>
+  </div>`:''}
+
+  <div class="chart-card">
+    <div class="chart-card-title">Daily Breakdown</div>
+    ${dayRows}
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card-title">Subject Allocation</div>
+    ${subjBars||'<p class="text-muted">No sessions this cycle</p>'}
+    ${accuracyHtml}
+    ${rebalHtml}
+  </div>`;
+}
+
+// ============================================================
+// WEAKNESS HEATMAP
+// ============================================================
+function renderStatsHeatmap(){
+  const startDay=studyStartDay();
+  const curDay=todayRamadanDay()||startDay;
+  const days=[];
+  for(let d=startDay;d<=curDay;d++)days.push(d);
+
+  // Build a map: subjectId -> dayNumber -> worst confidence that day
+  const confScore={'struggling':1,'ok':2,'confident':3};
+  const confColor={'struggling':'var(--red)','ok':'var(--amber)','confident':'var(--green)'};
+  const map={};
+  state.sessions.forEach(s=>{
+    const t=getTask(s.taskId);if(!t)return;
+    const sid=t.subjectId;const d=s.ramadanDay;
+    if(!d)return;
+    if(!map[sid])map[sid]={};
+    const cur=map[sid][d];
+    const incoming=s.confidenceRating;
+    if(!incoming)return;
+    // Keep worst (lowest score = most struggling)
+    if(!cur||confScore[incoming]<confScore[cur])map[sid][d]=incoming;
+  });
+
+  // Also track days with sessions but no confidence
+  const studiedDays={};
+  state.sessions.forEach(s=>{
+    const t=getTask(s.taskId);if(!t)return;
+    if(!studiedDays[t.subjectId])studiedDays[t.subjectId]={};
+    if(s.ramadanDay)studiedDays[t.subjectId][s.ramadanDay]=true;
+  });
+
+  const activeSubjects=state.subjects.filter(s=>state.tasks.some(t=>t.subjectId===s.id));
+  if(!activeSubjects.length)return`<div class="empty-state"><p>No data yet.</p></div>`;
+
+  // Day header
+  const dayHeader=days.map(d=>`<div style="width:20px;text-align:center;font-size:.58rem;color:var(--text3);font-family:var(--font-mono)">${d}</div>`).join('');
+
+  // Rows
+  const rows=activeSubjects.map(subj=>{
+    const cells=days.map(d=>{
+      const conf=map[subj.id]?.[d];
+      const studied=studiedDays[subj.id]?.[d];
+      let bg='var(--surface2)';
+      let title='No session';
+      if(conf){bg=confColor[conf];title=`Day ${d}: ${conf}`;}
+      else if(studied){bg='rgba(255,255,255,0.12)';title=`Day ${d}: studied (no rating)`;}
+      return`<div style="width:20px;height:20px;border-radius:3px;background:${bg};flex-shrink:0;cursor:default" title="${escapedHTML(subj.name+' — '+title)}"></div>`;
+    }).join('');
+    return`<div style="display:flex;align-items:center;gap:4px;margin-bottom:5px">
+      <div style="width:82px;font-size:.72rem;color:var(--text2);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:4px">${subj.name}</div>
+      <div style="display:flex;gap:2px;flex-wrap:nowrap;overflow-x:auto">${cells}</div>
+    </div>`;
+  }).join('');
+
+  const legend=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;align-items:center">
+    <span style="font-size:.7rem;color:var(--text3)">Legend:</span>
+    <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:2px;background:var(--red)"></div><span style="font-size:.72rem;color:var(--text2)">Struggling</span></div>
+    <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:2px;background:var(--amber)"></div><span style="font-size:.72rem;color:var(--text2)">OK</span></div>
+    <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:2px;background:var(--green)"></div><span style="font-size:.72rem;color:var(--text2)">Confident</span></div>
+    <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:2px;background:rgba(255,255,255,0.12)"></div><span style="font-size:.72rem;color:var(--text2)">Studied (no rating)</span></div>
+    <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;border-radius:2px;background:var(--surface2)"></div><span style="font-size:.72rem;color:var(--text2)">No session</span></div>
+  </div>`;
+
+  // Struggle summary: subjects with most red days
+  const struggleSummary=activeSubjects.map(s=>{
+    const redDays=days.filter(d=>map[s.id]?.[d]==='struggling').length;
+    return{name:s.name,color:s.color,redDays};
+  }).filter(s=>s.redDays>0).sort((a,b)=>b.redDays-a.redDays);
+
+  const warnHtml=struggleSummary.length?`<div class="chart-card" style="margin-top:16px">
+    <div class="chart-card-title">⚠️ Subjects with Most Struggling Days</div>
+    ${struggleSummary.map(s=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+      <div style="font-size:.82rem;color:var(--text2);flex:1">${s.name}</div>
+      <div style="font-family:var(--font-mono);font-size:.78rem;color:var(--red)">${s.redDays} day${s.redDays>1?'s':''}</div>
+    </div>`).join('')}
+  </div>`:'';
+
+  return`<div class="chart-card">
+    <div class="chart-card-title">Confidence Heatmap <span style="font-weight:400;font-size:.72rem;color:var(--text3)">· worst confidence per subject per day</span></div>
+    <div style="overflow-x:auto">
+      <div style="min-width:max-content">
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;padding-left:86px">
+          <div style="display:flex;gap:2px">${dayHeader}</div>
+        </div>
+        ${rows}
+      </div>
+    </div>
+    ${legend}
+  </div>
+  ${warnHtml}`;
+}
+
+// ============================================================
+// READINESS METER
+// ============================================================
+function renderStatsReadiness(){
+  const curDay=todayRamadanDay()||studyStartDay();
+  const startDay=studyStartDay();
+  const endDay=studyEndDay();
+  const target=state.settings.dailyTargetMinutes||480;
+  const daysLeft=Math.max(1,endDay-curDay+1);
+
+  // Component 1: Completion (30%)
+  const totalTasks=state.tasks.length;
+  const doneTasks=state.tasks.filter(t=>t.status==='completed').length;
+  const completionPct=totalTasks>0?doneTasks/totalTasks:0;
+  const completionScore=Math.round(completionPct*100);
+
+  // Component 2: Confidence (25%)
+  const ratedTasks=state.tasks.filter(t=>getLastConfidence(t.id));
+  const confMap={'struggling':0,'ok':60,'confident':100};
+  const avgConf=ratedTasks.length?ratedTasks.reduce((a,t)=>a+(confMap[getLastConfidence(t.id)]||0),0)/ratedTasks.length:50;
+  const confidenceScore=Math.round(avgConf);
+
+  // Component 3: Pace (25%) — how close to required daily hours is your actual average
+  const studiedSoFar=state.sessions.filter(s=>(s.ramadanDay||0)>=startDay&&(s.ramadanDay||0)<=curDay).reduce((a,s)=>a+s.durationMinutes,0);
+  const daysDone=Math.max(1,curDay-startDay+1);
+  const avgActualDaily=studiedSoFar/daysDone;
+  const paceScore=Math.min(100,Math.round((avgActualDaily/target)*100));
+
+  // Component 4: Days vs Work (20%)
+  const totalEstRemaining=state.tasks.filter(incomplete).reduce((a,t)=>{
+    const coeff=getCalibrationCoefficient(t.subjectId);
+    return a+Math.max(0,t.estimatedMinutes*coeff-taskActualMin(t.id));
+  },0);
+  const dailyCapacity=target*daysLeft;
+  const workFitScore=dailyCapacity>0?Math.min(100,Math.round((dailyCapacity/Math.max(1,totalEstRemaining))*100)):100;
+
+  // Composite
+  const composite=Math.round(completionScore*0.30+confidenceScore*0.25+paceScore*0.25+workFitScore*0.20);
+  const grade=composite>=85?{label:'Excellent',color:'var(--green)',emoji:'🏆'}:composite>=70?{label:'On Track',color:'var(--accent)',emoji:'✅'}:composite>=50?{label:'Needs Focus',color:'var(--amber)',emoji:'⚠️'}:{label:'At Risk',color:'var(--red)',emoji:'🚨'};
+
+  function bar(score,color){
+    return`<div style="flex:1;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden">
+      <div style="width:${score}%;height:100%;background:${color};border-radius:4px;transition:width .6s ease"></div>
+    </div>`;
+  }
+  function row(label,score,color,weight,note){
+    return`<div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <div style="font-size:.8rem;color:var(--text2)">${label} <span style="font-size:.68rem;color:var(--text3)">(${weight}%)</span></div>
+        <div style="font-family:var(--font-mono);font-size:.82rem;color:${color};font-weight:600">${score}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">${bar(score,color)}</div>
+      ${note?`<div style="font-size:.7rem;color:var(--text3);margin-top:3px">${note}</div>`:''}
+    </div>`;
+  }
+
+  // Recommendations
+  const recs=[];
+  if(paceScore<70)recs.push(`📈 Your daily average is ${formatMin(Math.round(avgActualDaily))}, below your ${formatMin(target)} target — try to push harder this week.`);
+  if(confidenceScore<60)recs.push(`📚 Many topics are rated "Struggling" — schedule focused revision sessions on weak subjects.`);
+  if(workFitScore<60)recs.push(`⏰ Remaining work (${formatMin(Math.round(totalEstRemaining))}) may not fit in ${daysLeft} days — consider reducing scope or increasing daily target.`);
+  if(completionPct<0.3&&curDay>startDay+5)recs.push(`🎯 Only ${doneTasks}/${totalTasks} tasks complete — try finishing smaller tasks to build momentum.`);
+  if(!recs.length)recs.push('🌟 You are well-prepared. Maintain your consistency through the remaining days.');
+
+  return`
+  <div style="text-align:center;padding:24px 16px;background:var(--surface2);border-radius:var(--radius2);margin-bottom:16px;border:1px solid var(--border2)">
+    <div style="font-size:3.5rem;font-weight:700;font-family:var(--font-mono);color:${grade.color};line-height:1">${composite}</div>
+    <div style="font-size:.72rem;color:var(--text3);font-family:var(--font-mono);margin-top:2px">/ 100</div>
+    <div style="margin-top:10px;font-size:1.1rem;font-weight:700;font-family:var(--font-head);color:${grade.color}">${grade.emoji} ${grade.label}</div>
+    <div style="font-size:.75rem;color:var(--text3);margin-top:4px">Readiness score for Ramadan Day ${curDay} · ${daysLeft} days remaining</div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card-title">Score Breakdown</div>
+    ${row('Task Completion',completionScore,'var(--green)',30,`${doneTasks} of ${totalTasks} tasks done`)}
+    ${row('Confidence Level',confidenceScore,confidenceScore>=70?'var(--green)':confidenceScore>=45?'var(--amber)':'var(--red)',25,ratedTasks.length?`Based on ${ratedTasks.length} rated tasks`:'No confidence ratings yet — rate tasks after sessions')}
+    ${row('Study Pace',paceScore,paceScore>=80?'var(--green)':paceScore>=60?'var(--amber)':'var(--red)',25,`Avg ${formatMin(Math.round(avgActualDaily))}/day vs ${formatMin(target)} target`)}
+    ${row('Work Fits Timeline',workFitScore,workFitScore>=80?'var(--green)':workFitScore>=60?'var(--amber)':'var(--red)',20,`${formatMin(Math.round(totalEstRemaining))} remaining · ${daysLeft} days · ${formatMin(target)}/day capacity`)}
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-card-title">Recommendations</div>
+    ${recs.map(r=>`<div style="font-size:.82rem;color:var(--text2);padding:8px 0;border-bottom:1px solid var(--border)">${r}</div>`).join('')}
+  </div>`;
 }
 
 function initStatsCharts(){
@@ -2089,6 +2484,24 @@ function renderSettings(){
   </div>
 
   <div class="settings-section">
+    <div class="settings-section-title">Subject Daily Caps <span style="font-weight:400;color:var(--text3);font-size:.75rem;text-transform:none">(optional — 0 = no cap)</span></div>
+    <div class="card">
+      ${state.subjects.map(sub=>{
+        const cap=(s.subjectDailyCaps||{})[sub.id]||0;
+        return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div class="subject-group-dot" style="background:${sub.color}"></div>
+          <div style="flex:1;font-size:.85rem">${sub.name}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" class="form-input" value="${cap}" min="0" max="480" step="10" style="width:80px;padding:5px 8px;text-align:center" onchange="updateSubjectCap('${sub.id}',+this.value)" placeholder="∞">
+            <span style="font-size:.72rem;color:var(--text3)">min/day</span>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="form-hint" style="margin-top:10px">Tasks from a capped subject are hidden from tonight's queue once the limit is reached.</div>
+    </div>
+  </div>
+
+  <div class="settings-section">
     <div class="settings-section-title">Algorithm Weights <span style="font-weight:400;color:var(--text3);font-size:.75rem;text-transform:none">(must sum to 1.0)</span></div>
     <div class="card">
       <div class="slider-row">
@@ -2154,6 +2567,13 @@ async function updateWeight(key,val){
   const el=document.getElementById(ids[key]);if(el)el.textContent=`${(val*100).toFixed(0)}%`;
   const sumEl=document.getElementById('weights-sum');if(sumEl){const ok=Math.abs(sum-1)<0.02;sumEl.textContent=`Sum: ${sum.toFixed(2)} ${ok?'✓ (Good)':'✗ Should be 1.0'}`;sumEl.className=`weights-sum${ok?'':' invalid'}`;}
   await saveSettings(state.settings);
+}
+async function updateSubjectCap(subjectId,minutes){
+  if(!state.settings.subjectDailyCaps)state.settings.subjectDailyCaps={};
+  if(minutes>0)state.settings.subjectDailyCaps[subjectId]=minutes;
+  else delete state.settings.subjectDailyCaps[subjectId];
+  await saveSettings(state.settings);
+  showToast(minutes>0?`Cap set to ${minutes} min/day`:'Cap removed','success');
 }
 async function updateSubjectName(id,name){
   const idx=state.subjects.findIndex(s=>s.id===id);if(idx<0)return;
@@ -2336,6 +2756,11 @@ function openTaskDetail(taskId){
       <span style="font-size:.72rem;color:var(--text3);margin-left:auto">Calibration: ${coeff.toFixed(2)}×</span>
     </div>
     ${task.notes?`<div class="import-instructions" style="margin-bottom:12px">${escapedHTML(task.notes)}</div>`:''}
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label" style="display:flex;align-items:center;gap:6px">📌 Study Notes <span style="font-size:.68rem;color:var(--text3);font-weight:400">(visible in Focus Mode)</span></label>
+      <textarea class="form-input" id="task-sticky-note" rows="3" placeholder="Confusing formulas, key ideas, reminders..." style="resize:vertical;font-size:.82rem;line-height:1.6">${escapedHTML(task.stickyNote||'')}</textarea>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="saveStickyNote('${taskId}')">💾 Save Note</button>
+    </div>
     <div class="card-title">Session History</div>
     ${sessions.length?`<table class="log-table"><thead><tr><th>Day</th><th>Duration</th><th>Confidence</th></tr></thead><tbody>${sessRows}</tbody></table>`:
     '<p class="text-muted">No sessions yet</p>'}
@@ -2364,6 +2789,14 @@ async function toggleRevision(taskId){
   await saveTask(t);
   playSound(t.needsRevision?'pop':'log');triggerHaptic('light');
   closeModal();renderView(state.currentView);
+}
+async function saveStickyNote(taskId){
+  const t=getTask(taskId);if(!t)return;
+  const el=document.getElementById('task-sticky-note');if(!el)return;
+  t.stickyNote=el.value.trim()||null;
+  await saveTask(t);
+  playSound('pop');triggerHaptic('light');
+  showToast('Note saved','success');
 }
 
 function showLogSessionModal(taskId){
@@ -2464,9 +2897,9 @@ function showPostSessionDialog(taskId,durationMinutes){
     <div class="post-session-task">${escapedHTML(task.name)}</div>
     <div class="card-title" style="margin-bottom:8px">How do you feel about this topic?</div>
     <div class="conf-buttons">
-      <button class="conf-btn struggling" onclick="finalizeSession('${taskId}',${durationMinutes},'struggling')">😓 Struggling</button>
-      <button class="conf-btn ok" onclick="finalizeSession('${taskId}',${durationMinutes},'ok')">🙂 OK</button>
-      <button class="conf-btn confident" onclick="finalizeSession('${taskId}',${durationMinutes},'confident')">💪 Confident</button>
+      <button class="conf-btn struggling" id="psd-btn-struggling" onclick="selectPostConf('struggling')">😓 Struggling</button>
+      <button class="conf-btn ok" id="psd-btn-ok" onclick="selectPostConf('ok')">🙂 OK</button>
+      <button class="conf-btn confident" id="psd-btn-confident" onclick="selectPostConf('confident')">💪 Confident</button>
     </div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="finalizeSession('${taskId}',${durationMinutes},null,true)">✓ Mark Complete</button>
@@ -2476,30 +2909,44 @@ function showPostSessionDialog(taskId,durationMinutes){
   </div>`;
   ov.classList.add('open');
   window._pendingSession={taskId,durationMinutes,conf:null,complete:false};
+  window._finalizingSession=false;
+}
+function selectPostConf(conf){
+  ['struggling','ok','confident'].forEach(c=>{
+    const b=document.getElementById(`psd-btn-${c}`);
+    if(b)b.classList.toggle('selected',c===conf);
+  });
+  if(window._pendingSession)window._pendingSession.conf=conf;
+  playSound('pop');triggerHaptic('light');
 }
 async function finalizeSession(taskId,dur,conf,markComplete=null){
-  const sess={id:genId(),taskId,ramadanDay:todayRamadanDay(),calendarDate:new Date().toISOString(),durationMinutes:dur,isManual:false,confidenceRating:conf||window._pendingSession?.conf||null};
-  await saveSession(sess);
-  const task=getTask(taskId);
-  if(markComplete===true){
-    await updateTaskStatus(taskId,'completed');
-    if(task){task.needsRevision=false;await saveTask(task);}
-    closeModal();if(task)celebrateTaskComplete(task.name);
-    renderView(state.currentView);delete window._pendingSession;return;
-  }else if(markComplete==='revision'){
-    await updateTaskStatus(taskId,'completed');
-    if(task){task.needsRevision=true;await saveTask(task);}
-    closeModal();showToast('Marked for revision — will reappear in queue','info');
-    playSound('pop');triggerHaptic('medium');
-    renderView(state.currentView);delete window._pendingSession;return;
-  }else if(markComplete===null&&!conf){// just confidence, no completion
-  }else{await updateTaskStatus(taskId,'in_progress');}
-  if(conf&&markComplete===null){
-    playSound('pop');triggerHaptic('light');
-    window._pendingSession.conf=conf;return;
+  // Prevent double-fire
+  if(window._finalizingSession)return;
+  window._finalizingSession=true;
+  try{
+    const finalConf=conf||window._pendingSession?.conf||null;
+    const sess={id:genId(),taskId,ramadanDay:todayRamadanDay(),calendarDate:new Date().toISOString(),durationMinutes:dur,isManual:false,confidenceRating:finalConf};
+    await saveSession(sess);
+    const task=getTask(taskId);
+    if(markComplete===true){
+      await updateTaskStatus(taskId,'completed');
+      if(task){task.needsRevision=false;await saveTask(task);}
+      closeModal();if(task)celebrateTaskComplete(task.name);
+      renderView(state.currentView);delete window._pendingSession;return;
+    }else if(markComplete==='revision'){
+      await updateTaskStatus(taskId,'completed');
+      if(task){task.needsRevision=true;await saveTask(task);}
+      closeModal();showToast('Marked for revision — will reappear in queue','info');
+      playSound('pop');triggerHaptic('medium');
+      renderView(state.currentView);delete window._pendingSession;return;
+    }else if(markComplete===false){
+      await updateTaskStatus(taskId,'in_progress');
+    }
+    playSound('log');triggerHaptic('light');
+    closeModal();renderView(state.currentView);delete window._pendingSession;
+  }finally{
+    window._finalizingSession=false;
   }
-  playSound('log');triggerHaptic('light');
-  closeModal();renderView(state.currentView);delete window._pendingSession;
 }
 
 // CSV IMPORT
@@ -3076,13 +3523,359 @@ function showToast(msg,type){
   document.body.appendChild(div);
   setTimeout(function(){div.style.opacity='0';div.style.transition='opacity .3s';setTimeout(function(){div.remove();},300);},2500);
 }
+function handleDigestOverlayClick(e){if(e.target===document.getElementById('digest-overlay'))closeDigest();}
+function closeDigest(){document.getElementById('digest-overlay').classList.remove('open');}
+
+function showDailyDigest(){
+  const curDay=todayRamadanDay()||studyStartDay();
+  const prevDay=curDay-1;
+  const startDay=studyStartDay();
+  const endDay=studyEndDay();
+  const target=state.settings.dailyTargetMinutes||480;
+
+  // ── Tonight's sessions ──────────────────────────────────────
+  const tonightSess=state.sessions.filter(s=>s.ramadanDay===curDay).sort((a,b)=>new Date(a.calendarDate)-new Date(b.calendarDate));
+  const tonightMin=tonightSess.reduce((a,s)=>a+s.durationMinutes,0);
+  const tonightSessCount=tonightSess.length;
+  const tonightTaskIds=[...new Set(tonightSess.map(s=>s.taskId))];
+
+  // ── Yesterday comparison ────────────────────────────────────
+  const yesterdaySess=state.sessions.filter(s=>s.ramadanDay===prevDay);
+  const yesterdayMin=yesterdaySess.reduce((a,s)=>a+s.durationMinutes,0);
+  const deltaMin=tonightMin-yesterdayMin;
+  const deltaSign=deltaMin>0?'up':deltaMin<0?'down':'same';
+  const deltaStr=deltaMin===0?'Same as yesterday':deltaMin>0?`+${formatMin(deltaMin)} vs yesterday`:`${formatMin(Math.abs(deltaMin))} less than yesterday`;
+
+  // ── Personal best check ─────────────────────────────────────
+  const allDayMins={};
+  state.sessions.forEach(s=>{if(s.ramadanDay)allDayMins[s.ramadanDay]=(allDayMins[s.ramadanDay]||0)+s.durationMinutes;});
+  const prevBest=Math.max(0,...Object.entries(allDayMins).filter(([d])=>+d!==curDay).map(([,m])=>m));
+  const isPersonalBest=tonightMin>0&&tonightMin>=prevBest&&prevBest>0;
+  const isFirstSession=Object.keys(allDayMins).length<=1;
+
+  // ── Tasks completed tonight ─────────────────────────────────
+  const completedTonight=state.tasks.filter(t=>t.status==='completed'&&t.dateCompleted===curDay);
+  const inProgressTonight=state.tasks.filter(t=>t.status==='in_progress'&&tonightTaskIds.includes(t.id));
+
+  // ── Subject breakdown tonight ───────────────────────────────
+  const subjTonight={};
+  tonightSess.forEach(s=>{
+    const t=getTask(s.taskId);if(!t)return;
+    const sub=getSubject(t.subjectId);
+    if(!subjTonight[sub.id])subjTonight[sub.id]={name:sub.name,color:sub.color,min:0,sessions:0,tasks:new Set()};
+    subjTonight[sub.id].min+=s.durationMinutes;
+    subjTonight[sub.id].sessions++;
+    subjTonight[sub.id].tasks.add(t.id);
+  });
+  const subjList=Object.values(subjTonight).sort((a,b)=>b.min-a.min);
+
+  // ── Confidence tonight ──────────────────────────────────────
+  const ratedTonight=tonightSess.filter(s=>s.confidenceRating);
+  const confCounts={struggling:0,ok:0,confident:0};
+  ratedTonight.forEach(s=>{if(confCounts[s.confidenceRating]!==undefined)confCounts[s.confidenceRating]++;});
+  const dominantConf=ratedTonight.length?(['struggling','ok','confident'].sort((a,b)=>confCounts[b]-confCounts[a])[0]):null;
+
+  // ── Estimation accuracy tonight ─────────────────────────────
+  const completedWithData=completedTonight.filter(t=>t.estimatedMinutes>0&&taskActualMin(t.id)>0);
+  let accuracyStr='';
+  if(completedWithData.length){
+    const ratios=completedWithData.map(t=>taskActualMin(t.id)/t.estimatedMinutes);
+    const avg=ratios.reduce((a,r)=>a+r,0)/ratios.length;
+    if(avg>1.25)accuracyStr=`Tasks took ${(avg*100-100).toFixed(0)}% longer than estimated`;
+    else if(avg<0.8)accuracyStr=`Finished ${(100-avg*100).toFixed(0)}% faster than estimated`;
+    else accuracyStr='Estimation was accurate tonight';
+  }
+
+  // ── Streak ──────────────────────────────────────────────────
+  let streak=0;
+  const shieldUsedD={};
+  function weekOfD(d){return Math.floor((d-startDay)/7);}
+  for(let d=curDay;d>=startDay;d--){
+    const m=state.sessions.filter(s=>s.ramadanDay===d).reduce((a,s)=>a+s.durationMinutes,0);
+    const wk=weekOfD(d);
+    if(m>=target)streak++;
+    else if(!shieldUsedD[wk]){shieldUsedD[wk]=true;}
+    else break;
+  }
+  const hitTarget=tonightMin>=target;
+
+  // ── Overall progress ────────────────────────────────────────
+  const totalStudiedEver=state.sessions.reduce((a,s)=>a+s.durationMinutes,0);
+  const daysLeft=Math.max(1,endDay-curDay);
+  const incompleteTasks=state.tasks.filter(incomplete);
+  const totalRem=incompleteTasks.reduce((a,t)=>{
+    const coeff=getCalibrationCoefficient(t.subjectId);
+    return a+Math.max(0,t.estimatedMinutes*coeff-taskActualMin(t.id));
+  },0);
+  const requiredDaily=daysLeft>0?totalRem/daysLeft:totalRem;
+
+  // ── Tomorrow's top suggestions ──────────────────────────────
+  const{full:tomorrowFull}=generateTonightQueue();
+  const topTomorrow=tomorrowFull.slice(0,3);
+
+  // ── Awards ──────────────────────────────────────────────────
+  const awards=[];
+  if(isPersonalBest)awards.push({icon:'🏆',text:`<strong>Personal Best!</strong> ${formatMin(tonightMin)} is your highest single-day study time so far.`});
+  if(hitTarget)awards.push({icon:'🎯',text:`<strong>Daily target hit!</strong> You studied ${formatMin(tonightMin)} — goal was ${formatMin(target)}.`});
+  if(streak>=3)awards.push({icon:'🔥',text:`<strong>${streak}-day streak!</strong> Consecutive days hitting your target. Keep the fire burning.`});
+  if(completedTonight.length>=2)awards.push({icon:'✅',text:`<strong>${completedTonight.length} tasks completed</strong> tonight. Outstanding output.`});
+  if(confCounts.confident>=2)awards.push({icon:'💪',text:`<strong>${confCounts.confident} confident ratings</strong> tonight — your understanding is deepening.`});
+  if(tonightMin>0&&tonightMin<target*0.4)awards.push({icon:'💡',text:`Only ${formatMin(tonightMin)} tonight — every minute counts. Tomorrow is a fresh start.`});
+  if(!awards.length&&tonightMin>0)awards.push({icon:'📖',text:`You showed up and studied. That's what matters. ${formatMin(tonightMin)} logged.`});
+  if(!tonightMin)awards.push({icon:'😴',text:`No sessions logged tonight. Tomorrow is a new opportunity.`});
+
+  // ── Hero message ────────────────────────────────────────────
+  const heroTitle=tonightMin===0?'No Sessions Tonight':isPersonalBest?'Personal Best Night! 🏆':hitTarget?'Target Achieved! 🎉':tonightMin>0?'Night Logged':'Rest Up';
+  const heroSub=tonightMin===0?`Ramadan Day ${curDay} · Get some rest`:
+    `Ramadan Day ${curDay} · ${tonightSessCount} session${tonightSessCount!==1?'s':''} · ${tonightTaskIds.length} task${tonightTaskIds.length!==1?'s':''} touched`;
+
+  // ── Build HTML ──────────────────────────────────────────────
+  let html=`
+  <div class="digest-hero">
+    <div class="digest-hero-time">${formatMin(tonightMin)}</div>
+    <div class="digest-hero-label">studied tonight</div>
+    <div class="digest-hero-title">${heroTitle}</div>
+    <div class="digest-hero-sub">${heroSub}</div>
+    ${tonightMin>0?`<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      ${hitTarget?`<span class="digest-badge green">✓ Target Hit</span>`:`<span class="digest-badge amber">${Math.round(tonightMin/target*100)}% of target</span>`}
+      ${streak>0?`<span class="digest-badge accent">🔥 ${streak}-day streak</span>`:''}
+      ${isPersonalBest?`<span class="digest-badge green">★ Personal Best</span>`:''}
+      ${dominantConf?`<span class="digest-badge ${dominantConf==='struggling'?'red':dominantConf==='ok'?'amber':'green'}">${dominantConf==='struggling'?'😓':dominantConf==='ok'?'🙂':'💪'} ${dominantConf}</span>`:''}
+    </div>`:''}
+  </div>`;
+
+  // ── Stats row ───────────────────────────────────────────────
+  if(tonightMin>0){
+    html+=`<div class="digest-section">
+      <div class="digest-section-title">Tonight at a Glance</div>
+      <div class="digest-stat-row">
+        <div class="digest-stat">
+          <div class="digest-stat-val">${formatMin(tonightMin)}</div>
+          <div class="digest-stat-lbl">Studied</div>
+          <div class="digest-stat-delta ${deltaSign}">${deltaStr}</div>
+        </div>
+        <div class="digest-stat">
+          <div class="digest-stat-val">${tonightSessCount}</div>
+          <div class="digest-stat-lbl">Sessions</div>
+          <div class="digest-stat-delta same">across ${tonightTaskIds.length} tasks</div>
+        </div>
+        <div class="digest-stat">
+          <div class="digest-stat-val">${completedTonight.length}</div>
+          <div class="digest-stat-lbl">Completed</div>
+          <div class="digest-stat-delta same">${inProgressTonight.length} in progress</div>
+        </div>
+      </div>
+      <div class="digest-stat-row">
+        <div class="digest-stat">
+          <div class="digest-stat-val">${formatMin(Math.round(tonightMin/Math.max(1,tonightSessCount)))}</div>
+          <div class="digest-stat-lbl">Avg Session</div>
+        </div>
+        <div class="digest-stat">
+          <div class="digest-stat-val">${ratedTonight.length}</div>
+          <div class="digest-stat-lbl">Tasks Rated</div>
+          <div class="digest-stat-delta same">${ratedTonight.length?`${confCounts.confident}✓ ${confCounts.ok}~ ${confCounts.struggling}✗`:''}</div>
+        </div>
+        <div class="digest-stat">
+          <div class="digest-stat-val">${Math.round(tonightMin/target*100)}%</div>
+          <div class="digest-stat-lbl">Goal</div>
+          <div class="digest-stat-delta ${hitTarget?'up':'same'}">${hitTarget?`${formatMin(tonightMin-target)} over`:`${formatMin(target-tonightMin)} short`}</div>
+        </div>
+      </div>
+      ${accuracyStr?`<div style="font-size:.75rem;color:var(--text3);text-align:center;padding:4px 0;font-family:var(--font-mono)">📐 ${accuracyStr}</div>`:''}
+    </div>`;
+  }
+
+  // ── Subject breakdown ───────────────────────────────────────
+  if(subjList.length){
+    const maxMin=subjList[0].min;
+    html+=`<div class="digest-section">
+      <div class="digest-section-title">Subject Breakdown</div>
+      ${subjList.map(s=>`
+        <div class="digest-subj-bar-row">
+          <div style="width:10px;height:10px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+          <div style="font-size:.78rem;color:var(--text2);width:82px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
+          <div class="digest-bar-track"><div class="digest-bar-fill" style="width:${Math.round(s.min/maxMin*100)}%;background:${s.color}"></div></div>
+          <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--text3);width:36px;text-align:right">${formatMin(s.min)}</div>
+          <div style="font-size:.65rem;color:var(--text3);width:52px">${s.sessions} sess.</div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // ── Session log ─────────────────────────────────────────────
+  if(tonightSess.length){
+    html+=`<div class="digest-section">
+      <div class="digest-section-title">Session Log</div>
+      ${tonightSess.map(s=>{
+        const t=getTask(s.taskId);
+        const sub=t?getSubject(t.subjectId):{name:'?',color:'#888'};
+        const confIcon=s.confidenceRating==='struggling'?'😓':s.confidenceRating==='ok'?'🙂':s.confidenceRating==='confident'?'💪':'·';
+        return`<div class="digest-session-row">
+          <div style="width:8px;height:8px;border-radius:50%;background:${sub.color};flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-bn)">${t?escapedHTML(t.name):'Deleted task'}</div>
+            <div style="font-size:.68rem;color:var(--text3)">${sub.name}${t?.chapter?' · '+t.chapter:''}</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:.78rem;color:var(--text2);flex-shrink:0">${formatMin(s.durationMinutes)}</div>
+          <div style="font-size:.85rem;flex-shrink:0;width:20px;text-align:center">${confIcon}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // ── Awards / highlights ─────────────────────────────────────
+  if(awards.length){
+    html+=`<div class="digest-section">
+      <div class="digest-section-title">Highlights</div>
+      ${awards.map(a=>`<div class="digest-award">
+        <div class="digest-award-icon">${a.icon}</div>
+        <div class="digest-award-text">${a.text}</div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ── Overall picture ─────────────────────────────────────────
+  html+=`<div class="digest-section">
+    <div class="digest-section-title">Overall Picture</div>
+    <div class="digest-stat-row">
+      <div class="digest-stat">
+        <div class="digest-stat-val">${fmtHours(totalStudiedEver)}h</div>
+        <div class="digest-stat-lbl">Total Ever</div>
+      </div>
+      <div class="digest-stat">
+        <div class="digest-stat-val">${daysLeft}</div>
+        <div class="digest-stat-lbl">Days Left</div>
+        <div class="digest-stat-delta same">until Day ${endDay}</div>
+      </div>
+      <div class="digest-stat">
+        <div class="digest-stat-val" style="color:${requiredDaily>target?'var(--red)':requiredDaily>target*.8?'var(--amber)':'var(--green)'}">${formatMin(Math.round(requiredDaily))}</div>
+        <div class="digest-stat-lbl">Needed/Day</div>
+        <div class="digest-stat-delta ${requiredDaily>target?'down':requiredDaily>target*.8?'same':'up'}">${requiredDaily<=target?'On track':'Behind pace'}</div>
+      </div>
+    </div>
+    <div class="digest-stat-row">
+      <div class="digest-stat">
+        <div class="digest-stat-val">${state.tasks.filter(t=>t.status==='completed').length}</div>
+        <div class="digest-stat-lbl">Done</div>
+        <div class="digest-stat-delta same">of ${state.tasks.length} tasks</div>
+      </div>
+      <div class="digest-stat">
+        <div class="digest-stat-val">${formatMin(Math.round(totalRem))}</div>
+        <div class="digest-stat-lbl">Work Left</div>
+      </div>
+      <div class="digest-stat">
+        <div class="digest-stat-val">${Math.round(state.tasks.filter(t=>t.status==='completed').length/Math.max(1,state.tasks.length)*100)}%</div>
+        <div class="digest-stat-lbl">Complete</div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Tomorrow's queue ────────────────────────────────────────
+  if(topTomorrow.length){
+    html+=`<div class="digest-section">
+      <div class="digest-section-title">Algorithm Suggests Tomorrow</div>
+      ${topTomorrow.map((t,i)=>{
+        const sub=getSubject(t.subjectId);
+        const rem=Math.max(0,t.estimatedMinutes*getCalibrationCoefficient(t.subjectId)-taskActualMin(t.id));
+        return`<div class="digest-tomorrow-task">
+          <div style="font-family:var(--font-mono);font-size:.75rem;color:var(--accent);font-weight:700;flex-shrink:0;padding-top:1px">#${i+1}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.82rem;color:var(--text);font-weight:600;font-family:var(--font-bn)">${escapedHTML(t.name)}</div>
+            <div style="font-size:.7rem;color:${sub.color};margin-top:2px">${sub.name}${t.chapter?' · '+t.chapter:''}</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:.72rem;color:var(--text3);flex-shrink:0">${formatMin(Math.round(rem))}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // ── Closing ─────────────────────────────────────────────────
+  const closingMessages=[
+    'Rest well. Your brain consolidates learning during sleep. 🧠',
+    'Every session is a deposit in the bank of knowledge. 💫',
+    'You showed up. That is already more than most. 🌙',
+    'Good night. May your sleep be as productive as your study. ✨',
+    'The knowledge you built tonight is yours forever. 🏛️',
+    'Rest now. Tomorrow we continue. 🌟',
+  ];
+  const closing=closingMessages[curDay%closingMessages.length];
+  html+=`<div style="text-align:center;padding:16px 28px 4px;font-size:.78rem;color:var(--text3);line-height:1.6;font-style:italic">${closing}</div>`;
+  html+=`<button class="digest-close-btn" onclick="closeDigest();${isPersonalBest||hitTarget?'launchConfetti();':''}">${hitTarget?'✓ Great Night — Close':'Close Digest'}</button>`;
+
+  document.getElementById('digest-card').innerHTML=html;
+  document.getElementById('digest-overlay').classList.add('open');
+  if(isPersonalBest||hitTarget){setTimeout(()=>{launchConfetti();playSound('complete');triggerHaptic('success');},400);}
+  else if(tonightMin>0){playSound('log');triggerHaptic('light');}
+}
+
 function celebrateTaskComplete(taskName){
   launchConfetti();
   playSound('complete');
   triggerHaptic('success');
   showToast('Completed: '+taskName,'success');
 }
+
+// ============================================================
+// SMART RESCHEDULE
+// ============================================================
+function showSmartReschedule(){
+  const curDay=todayRamadanDay()||studyStartDay();
+  const endDay=studyEndDay();
+  const daysLeft=Math.max(1,endDay-curDay+1);
+  const target=state.settings.dailyTargetMinutes||480;
+  const incomplete_tasks=state.tasks.filter(incomplete);
+  if(!incomplete_tasks.length){showToast('No tasks remaining!','success');return;}
+
+  // Group remaining by subject
+  const subjRemaining={};
+  incomplete_tasks.forEach(t=>{
+    const sub=getSubject(t.subjectId);
+    const coeff=getCalibrationCoefficient(t.subjectId);
+    const rem=Math.max(0,t.estimatedMinutes*coeff-taskActualMin(t.id));
+    if(!subjRemaining[sub.id])subjRemaining[sub.id]={name:sub.name,color:sub.color,min:0,tasks:0};
+    subjRemaining[sub.id].min+=rem;
+    subjRemaining[sub.id].tasks++;
+  });
+  const totalRem=Object.values(subjRemaining).reduce((a,s)=>a+s.min,0);
+  const dailyNeeded=totalRem/daysLeft;
+  const feasible=dailyNeeded<=target*1.3;
+
+  const rows=Object.values(subjRemaining).sort((a,b)=>b.min-a.min).map(s=>{
+    const perDay=(s.min/daysLeft);
+    return`<tr>
+      <td style="padding:7px 10px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${s.color};margin-right:6px"></span>${s.name}</td>
+      <td style="padding:7px 10px;font-family:var(--font-mono);text-align:right">${formatMin(Math.round(s.min))}</td>
+      <td style="padding:7px 10px;font-family:var(--font-mono);text-align:right;color:${perDay>target*0.5?'var(--red)':'var(--text2)'}">${formatMin(Math.round(perDay))}/day</td>
+      <td style="padding:7px 10px;color:var(--text3);text-align:right">${s.tasks} task${s.tasks>1?'s':''}</td>
+    </tr>`;
+  }).join('');
+
+  openModal(`
+  <div class="modal-header"><div class="modal-title">🗓️ Smart Reschedule</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+  <div class="modal-body">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="stat-card"><div class="stat-label">Days Left</div><div class="stat-value">${daysLeft}</div></div>
+      <div class="stat-card"><div class="stat-label">Work Remaining</div><div class="stat-value" style="font-size:1rem">${formatMin(Math.round(totalRem))}</div></div>
+      <div class="stat-card"><div class="stat-label">Needed Daily</div><div class="stat-value" style="${dailyNeeded>target?'color:var(--red)':''};font-size:1rem">${formatMin(Math.round(dailyNeeded))}</div></div>
+    </div>
+    <div style="padding:10px 14px;border-radius:10px;margin-bottom:14px;background:${feasible?'var(--green2)':'var(--red2)'};border:1px solid ${feasible?'rgba(77,190,140,0.3)':'rgba(232,92,92,0.3)'};font-size:.82rem;color:${feasible?'var(--green)':'var(--red)'}">
+      ${feasible?`✅ Achievable — you need ${formatMin(Math.round(dailyNeeded))} per day, within your ${formatMin(target)} target.`:`⚠️ Tight — ${formatMin(Math.round(dailyNeeded))}/day needed exceeds your ${formatMin(target)} target. Consider reducing scope or increasing daily target.`}
+    </div>
+    <div class="card-title" style="margin-bottom:8px">Per-Subject Daily Allocation</div>
+    <div class="scroll-area" style="max-height:260px">
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+        <thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:6px 10px;text-align:left;color:var(--text3);font-size:.7rem">Subject</th><th style="padding:6px 10px;text-align:right;color:var(--text3);font-size:.7rem">Remaining</th><th style="padding:6px 10px;text-align:right;color:var(--text3);font-size:.7rem">Daily Slice</th><th style="padding:6px 10px;text-align:right;color:var(--text3);font-size:.7rem">Tasks</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;font-size:.72rem;color:var(--text3)">Based on calibrated estimates · Days ${curDay}–${endDay}</div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+}
 </script>
+
+<div id="digest-overlay" class="digest-overlay" onclick="handleDigestOverlayClick(event)">
+  <div class="digest-card" id="digest-card"></div>
+</div>
 
 <div id="focus-overlay">
   <button class="focus-exit" onclick="closeFocusMode()">✕ Exit Focus</button>
@@ -3103,6 +3896,10 @@ function celebrateTaskComplete(taskName){
     <button class="btn" style="background:rgba(232,92,92,0.15);color:var(--red);border:1px solid rgba(232,92,92,0.25)" onclick="stopTimer();closeFocusMode()">■ Stop</button>
   </div>
   <div id="focus-quote" class="focus-quote"></div>
+  <div id="focus-sticky" style="max-width:420px;margin-top:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;text-align:left;display:none">
+    <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);font-weight:700;margin-bottom:6px">📌 Your Notes</div>
+    <div id="focus-sticky-text" style="font-size:.8rem;color:var(--text2);line-height:1.7;white-space:pre-wrap"></div>
+  </div>
 </div>
 </body>
 </html>
