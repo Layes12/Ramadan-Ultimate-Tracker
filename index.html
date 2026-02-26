@@ -513,7 +513,9 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .focus-ring-wrap svg{position:absolute;top:0;left:0;transform:rotate(-90deg)}
 .focus-big-time{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--font-mono);font-size:3rem;font-weight:700;color:var(--text)}
 .focus-controls{display:flex;gap:12px;margin-bottom:32px}
-.focus-quote{max-width:400px;font-style:italic;color:var(--text3);font-size:.82rem;line-height:1.8;border-left:3px solid var(--accent);padding-left:16px;text-align:left;min-height:54px;transition:opacity .4s}
+.focus-quote{max-width:400px;text-align:center;min-height:64px;transition:opacity .5s}
+.focus-quote-text{font-style:italic;color:var(--text2);font-size:.9rem;line-height:1.7;margin-bottom:6px}
+.focus-quote-author{font-size:.72rem;color:var(--text3);letter-spacing:.04em;font-weight:500}
 .focus-exit{position:absolute;top:18px;right:18px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:var(--text3);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;font-family:var(--font);transition:all .2s}
 .focus-exit:hover{color:var(--text);background:rgba(255,255,255,0.12)}
 .focus-pomo-bar{width:300px;max-width:80vw;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-bottom:6px;overflow:hidden}
@@ -1459,47 +1461,13 @@ function renderTasks(){
 // Draggable task card - renders a compact card with order input + drag handle
 function renderTaskCardDraggable(task){
   const DRAG_ICON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>`;
-  const subj=getSubject(task.subjectId);
-  const isActive=state.activeTimer&&state.activeTimer.taskId===task.id;
-  const actual=taskActualMin(task.id);
-  const coeff=getCalibrationCoefficient(task.subjectId);
-  const remaining=Math.max(0,task.estimatedMinutes*coeff-actual);
-  const orderVal=task._order!==undefined?task._order:'';
-
-  let statusDot='';
-  if(task.needsRevision)statusDot='<span class="task-meta-badge badge-revision" style="font-size:.6rem;padding:1px 5px">↻</span>';
-  else if(task.status==='completed')statusDot='<span class="task-meta-badge badge-completed" style="font-size:.6rem;padding:1px 5px">✓</span>';
-  else if(task.status==='in_progress')statusDot='<span class="task-meta-badge badge-inprogress" style="font-size:.6rem;padding:1px 5px">●</span>';
-
-  let startBtn='';
-  if(isActive){startBtn=`<button class="start-btn stop-btn" onclick="event.stopPropagation();stopTimer()" style="font-size:.68rem;padding:3px 8px">■</button>`;}
-  else if(!state.activeTimer){startBtn=`<button class="start-btn" onclick="event.stopPropagation();startTimer('${task.id}')" style="font-size:.68rem;padding:3px 8px">▶</button>`;}
-
-  return`<div class="task-card task-card-compact${isActive?' active-task':''}" 
-    draggable="true"
-    data-task-id="${task.id}"
-    ondragstart="onTaskDragStart(event,'${task.id}')"
-    ondragover="onTaskDragOver(event,'${task.id}')"
-    ondrop="onTaskDrop(event,'${task.id}')"
-    ondragleave="onTaskDragLeave(event,'${task.id}')"
-    onclick="openTaskDetail('${task.id}')">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="drag-handle" style="width:20px;height:100%;cursor:grab;opacity:0.4;flex-shrink:0" onclick="event.stopPropagation()">${DRAG_ICON}</div>
-      <input type="number" class="order-input" value="${orderVal}" min="0" max="9999"
-        onclick="event.stopPropagation()"
-        onchange="event.stopPropagation();setTaskOrder('${task.id}',+this.value)"
-        title="Display order (lower = first)"
-        style="width:40px;text-align:center;padding:2px 4px;font-size:.7rem;font-family:var(--font-mono);background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:var(--text3);flex-shrink:0">
-      <div style="flex:1;min-width:0">
-        <div class="task-name" style="font-size:.82rem;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapedHTML(task.name)}</div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap">
-          ${statusDot}
-          <span class="task-time" style="font-size:.68rem">${formatMin(Math.round(remaining))}</span>
-        </div>
-      </div>
-      <div onclick="event.stopPropagation()" style="flex-shrink:0">${startBtn}</div>
-    </div>
-  </div>`;
+  // Render the standard full-fidelity card, then inject drag support
+  let html=renderTaskCard(task,true);
+  // 1. Add draggable attrs to the outer card div (first occurrence of class="task-card...)
+  html=html.replace(/(<div class="task-card[^"]*")/, `$1 draggable="true" ondragstart="onTaskDragStart(event,'${task.id}')" ondragover="onTaskDragOver(event,'${task.id}')" ondrop="onTaskDrop(event,'${task.id}')" ondragleave="onTaskDragLeave(event,'${task.id}')" ondragend="drag.active=null"`);
+  // 2. Prepend drag handle inside task-card-top
+  html=html.replace('class="task-card-top"',`class="task-card-top"><div class="drag-handle" draggable="false" onclick="event.stopPropagation()">${DRAG_ICON}</div`);
+  return html;
 }
 
 // Set task order numerically and save
@@ -1573,7 +1541,20 @@ async function onSubjDrop(e,targetId){
   renderTasks();drag.active=null;
 }
 
-function setTaskFilter(key,val){state.taskFilter[key]=val;renderTasks();}
+function setTaskFilter(key,val){
+  state.taskFilter[key]=val;
+  if(key==='search'){
+    // Save cursor before re-render to restore it after
+    var si=document.querySelector('.search-input');
+    var selStart=si?si.selectionStart:null;
+    renderTasks();
+    // Restore focus and cursor
+    var si2=document.querySelector('.search-input');
+    if(si2&&selStart!==null){si2.focus();try{si2.setSelectionRange(selStart,selStart);}catch(e){}}
+  }else{
+    renderTasks();
+  }
+}
 function filterTasksByAvoided(){
   navigate('tasks');
   // no specific filter, just show all
@@ -2148,6 +2129,10 @@ function showEditTaskModal(taskId){
       <div class="form-group"><label class="form-label">Estimated Minutes</label><input type="number" class="form-input" id="e-est" value="${task.estimatedMinutes}" min="1"></div>
       <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="e-status">${statusOpts}</select></div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Task Order #</label><input type="number" class="form-input" id="e-order" value="${task._order!==undefined?task._order:''}" min="0" placeholder="e.g. 1, 2, 3…"><div class="form-hint">Lower = shown first within its chapter</div></div>
+      <div class="form-group"><label class="form-label">Chapter Order #</label><input type="number" class="form-input" id="e-chapter-order" value="${task._chapterOrder!==undefined?task._chapterOrder:''}" min="0" placeholder="e.g. 1, 2, 3…"><div class="form-hint">Controls chapter sort position</div></div>
+    </div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="e-notes" value="${escapedHTML(task.notes||'')}"></div>
     <div class="form-group">
       <label class="form-check"><input type="checkbox" id="e-deadline" ${task.isDeadlineTask?'checked':''} onchange="toggleEDeadline()"> Deadline Task</label>
@@ -2174,6 +2159,10 @@ async function editTask(taskId){
   task.notes=document.getElementById('e-notes')?.value.trim()||null;
   task.isDeadlineTask=document.getElementById('e-deadline')?.checked||false;
   task.deadlineDate=task.isDeadlineTask?(document.getElementById('e-deadline-date')?.value||null):null;
+  const orderVal=document.getElementById('e-order')?.value;
+  if(orderVal!==''&&orderVal!==null&&orderVal!==undefined)task._order=parseInt(orderVal);
+  const chOrderVal=document.getElementById('e-chapter-order')?.value;
+  if(chOrderVal!==''&&chOrderVal!==null&&chOrderVal!==undefined)task._chapterOrder=parseInt(chOrderVal);
   await saveTask(task);closeModal();renderView(state.currentView);
 }
 async function deleteTaskConfirm(id){
@@ -2418,12 +2407,12 @@ function showCSVImportModal(){
   <div class="modal-header"><div class="modal-title">Import Tasks from CSV</div><button class="modal-close" onclick="closeModal()">✕</button></div>
   <div class="modal-body">
     <div class="import-instructions">
-      <strong>CSV Format:</strong> One task per line with the following columns:<br>
-      <pre>subject,chapter,task_name,estimated_minutes,is_deadline,deadline_date,notes
-Physics,Chapter Five,State of Matter and Pressure,60,false,,
-Islam,Chapter 4,Taqwa,20,false,,
-Chemistry,,Acid-Base Balance,50,true,2025-03-20,Before exam</pre>
-      <strong>Rules:</strong> Subject must match one of your subjects (case-insensitive). <code>is_deadline</code> = true/false. <code>deadline_date</code> in YYYY-MM-DD format. Leave optional fields blank.
+      <strong>CSV Format:</strong> One task per line. Columns 1–7 required, 8–9 optional:<br>
+      <pre>subject,chapter,task_name,est_minutes,is_deadline,deadline_date,notes,task_order,chapter_order
+Physics,Chapter Five,State of Matter,60,false,,,1,5
+Islam,Chapter 4,Taqwa,20,false,,,2,4
+Chemistry,,Acid-Base Balance,50,true,2025-03-20,Before exam,1,</pre>
+      <strong>Rules:</strong> Subject must match one of your subjects (case-insensitive). <code>is_deadline</code> = true/false. <code>deadline_date</code> = YYYY-MM-DD. <code>task_order</code> = number controlling sort within chapter (lower = first). <code>chapter_order</code> = number controlling chapter sort position. Leave optional fields blank.
     </div>
     <div class="file-drop" id="csv-drop" onclick="document.getElementById('csv-file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleCSVDrop(event)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="12" y2="12"/><line x1="15" y1="15" x2="12" y2="12"/></svg>
@@ -2467,6 +2456,8 @@ function parseCSV(text){
       is_deadline:(cols[4]?.trim().toLowerCase()==='true'),
       deadline_date:cols[5]?.trim()||'',
       notes:cols[6]?.trim()||'',
+      task_order:cols[7]?.trim()!==undefined&&cols[7]?.trim()!==''?parseInt(cols[7]):undefined,
+      chapter_order:cols[8]?.trim()!==undefined&&cols[8]?.trim()!==''?parseInt(cols[8]):undefined,
       _errors:[],_matched_subject:null
     };
     // Validate and match subject
@@ -2515,7 +2506,7 @@ function renderCSVPreview(rows){
 async function confirmCSVImport(){
   const valid=csvParsed.filter(r=>!r._errors.length);
   if(!valid.length)return;
-  const tasks=valid.map(r=>({id:genId(),subjectId:r._matched_subject.id,name:r.task_name,chapter:r.chapter||null,estimatedMinutes:r.estimated_minutes,notes:r.notes||null,status:'not_started',isDeadlineTask:r.is_deadline,deadlineDate:r.is_deadline&&r.deadline_date?r.deadline_date:null,dateFirstStudied:null,dateLastStudied:null,dateCompleted:null}));
+  const tasks=valid.map(r=>({id:genId(),subjectId:r._matched_subject.id,name:r.task_name,chapter:r.chapter||null,estimatedMinutes:r.estimated_minutes,notes:r.notes||null,status:'not_started',isDeadlineTask:r.is_deadline,deadlineDate:r.is_deadline&&r.deadline_date?r.deadline_date:null,dateFirstStudied:null,dateLastStudied:null,dateCompleted:null,_order:r.task_order!==undefined&&!isNaN(r.task_order)?r.task_order:undefined,_chapterOrder:r.chapter_order!==undefined&&!isNaN(r.chapter_order)?r.chapter_order:undefined}));
   const batch=db.batch();
   tasks.forEach(t=>{const ref=db.collection('users').doc(state.uid).collection('tasks').doc(t.id);batch.set(ref,t);});
   await batch.commit();
@@ -3001,21 +2992,23 @@ let focusQuoteIndex=0;let focusQuoteTimer=null;
 function getMotivationalQuotes(){
   const custom=state.settings.motivationalQuotes;
   if(custom&&custom.length)return custom;
+  // Default quotes: objects with text and author
   return[
-    "The secret of getting ahead is getting started.",
-    "One step at a time. One page at a time.",
-    "You don't have to be great to start, but you have to start to be great.",
-    "Deep work is the superpower of the 21st century.",
-    "Every expert was once a beginner. Keep going.",
-    "Progress, not perfection.",
-    "Your future self is watching. Make them proud.",
-    "Focused energy beats scattered effort every time.",
-    "This session matters. Show up fully.",
-    "Small daily improvements lead to stunning results.",
-    "The mind is everything. What you think, you become.",
-    "Study hard, not hard studying — work with intention.",
-    "Knowledge is a treasure, but practice is the key.",
-    "Consistency compounds. Keep the streak alive.",
+    {text:"The secret of getting ahead is getting started.",author:"Mark Twain"},
+    {text:"An investment in knowledge pays the best interest.",author:"Benjamin Franklin"},
+    {text:"Education is not the filling of a pail, but the lighting of a fire.",author:"W.B. Yeats"},
+    {text:"The more that you read, the more things you will know.",author:"Dr. Seuss"},
+    {text:"Live as if you were to die tomorrow. Learn as if you were to live forever.",author:"Mahatma Gandhi"},
+    {text:"The beautiful thing about learning is that nobody can take it from you.",author:"B.B. King"},
+    {text:"Deep work is the superpower of the 21st century.",author:"Cal Newport"},
+    {text:"It does not matter how slowly you go as long as you do not stop.",author:"Confucius"},
+    {text:"Seek knowledge from the cradle to the grave.",author:"Prophet Muhammad ﷺ"},
+    {text:"The expert in anything was once a beginner.",author:"Helen Hayes"},
+    {text:"Small daily improvements over time lead to stunning results.",author:"Robin Sharma"},
+    {text:"Whoever follows a path in pursuit of knowledge, Allah will ease for him a path to Paradise.",author:"Prophet Muhammad ﷺ"},
+    {text:"Focused energy beats scattered effort every time.",author:""},
+    {text:"Your future self is watching you right now. Make them proud.",author:""},
+    {text:"Reading is to the mind what exercise is to the body.",author:"Joseph Addison"},
   ];
 }
 
@@ -3033,12 +3026,11 @@ function openFocusMode(){
   if(ringEl)ringEl.style.stroke=subj.color||'var(--accent)';
   ov.classList.add('open');
   updateFocusDisplay();
-  // Show first quote immediately
-  var quotes=getMotivationalQuotes();
-  var qEl=document.getElementById('focus-quote');
-  if(qEl&&quotes.length){qEl.textContent=quotes[Math.floor(Math.random()*quotes.length)];}
+  // Show random quote immediately on open
+  focusQuoteIndex=Math.floor(Math.random()*getMotivationalQuotes().length);
+  showFocusQuote(focusQuoteIndex);
   if(focusQuoteTimer)clearInterval(focusQuoteTimer);
-  focusQuoteTimer=setInterval(rotateFocusQuote,25000);
+  focusQuoteTimer=setInterval(rotateFocusQuote,1800000); // rotate every 30 min
   triggerHaptic('medium');
 }
 function closeFocusMode(){
@@ -3049,16 +3041,27 @@ function focusPauseResume(){
   if(state.activeTimer&&state.activeTimer.paused){resumeTimer();document.getElementById('focus-pause-btn').textContent='⏸ Pause';}
   else{pauseTimer();document.getElementById('focus-pause-btn').textContent='▶ Resume';}
 }
-function rotateFocusQuote(){
+function showFocusQuote(idx){
   const quotes=getMotivationalQuotes();
+  const el=document.getElementById('focus-quote');
+  if(!el||!quotes.length)return;
+  const q=quotes[idx%quotes.length];
+  const text=typeof q==='string'?q:(q.text||q);
+  const author=typeof q==='object'?q.author:'';
+  const tEl=el.querySelector('.focus-quote-text');
+  const aEl=el.querySelector('.focus-quote-author');
+  if(tEl)tEl.textContent='“'+text+'”';
+  if(aEl)aEl.textContent=author?('— '+author):'';
+}
+function rotateFocusQuote(){
   const el=document.getElementById('focus-quote');
   if(!el)return;
   el.style.opacity='0';
   setTimeout(()=>{
-    focusQuoteIndex=(focusQuoteIndex+1)%quotes.length;
-    el.textContent=quotes[focusQuoteIndex];
+    focusQuoteIndex=(focusQuoteIndex+1)%getMotivationalQuotes().length;
+    showFocusQuote(focusQuoteIndex);
     el.style.opacity='1';
-  },400);
+  },500);
 }
 function updateFocusDisplay(){
   if(!document.getElementById('focus-overlay').classList.contains('open'))return;
@@ -3124,10 +3127,14 @@ function showQuoteImportModal(){
   <div class="modal-header"><div class="modal-title">Import Motivational Quotes</div><button class="modal-close" onclick="closeModal()">✕</button></div>
   <div class="modal-body">
     <div class="import-instructions">
-      One quote per line. Plain text file or CSV with a single column.<br>
+      <strong>Format (one per line):</strong><br>
+      <code>Quote text here | Author Name</code><br>
+      Use <code>|</code> to separate quote from author. Author is optional.<br><br>
       <em>Example:</em><br>
-      The secret of getting ahead is getting started.<br>
-      One step at a time leads to mountains climbed.
+      <code>Seek knowledge from the cradle to the grave | Prophet Muhammad ﷺ</code><br>
+      <code>The expert in anything was once a beginner | Helen Hayes</code><br>
+      <code>Small steps every day.</code><br><br>
+      Quotes rotate every 30 minutes in Focus Mode and randomize each session.
     </div>
     <div class="file-drop" onclick="document.getElementById('quote-file-input').click()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -3143,7 +3150,14 @@ function showQuoteImportModal(){
 async function handleQuoteFile(input){
   const f=input.files[0];if(!f)return;
   const text=await f.text();
-  const quotes=text.split('\n').map(l=>l.replace(/^"|"$/g,'').trim()).filter(l=>l.length>5);
+  const quotes=text.split('\n')
+    .map(l=>l.replace(/^"|"$/g,'').trim())
+    .filter(l=>l.length>3)
+    .map(l=>{
+      const parts=l.split('|');
+      if(parts.length>=2)return{text:parts[0].trim(),author:parts[1].trim()};
+      return{text:l.trim(),author:''};
+    });
   state.settings.motivationalQuotes=quotes;
   await saveSettings(state.settings);
   closeModal();showToast(quotes.length+' quotes loaded!','success');
@@ -3159,33 +3173,67 @@ async function resetQuotes(){
 // ============================================================
 function exportSessionReport(targetDay){
   targetDay=targetDay||todayRamadanDay();
-  const sessions=state.sessions.filter(s=>s.ramadanDay===targetDay);
-  const calDate=ramadanDayToCalendar(targetDay);
-  const calStr=calDate?calDate.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):'';
-  const totalMin=sessions.reduce(function(a,s){return a+s.durationMinutes;},0);
-  const targetMin=state.settings.dailyTargetMinutes||480;
-  const pct=Math.min(100,Math.round(totalMin/targetMin*100));
-  const bySubject={};
+  var sessions=state.sessions.filter(function(s){return s.ramadanDay===targetDay;});
+  var calDate=ramadanDayToCalendar(targetDay);
+  var calStr=calDate?calDate.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'}):'';
+  var totalMin=sessions.reduce(function(a,s){return a+s.durationMinutes;},0);
+  var targetMin=state.settings.dailyTargetMinutes||480;
+  var pct=Math.min(100,Math.round(totalMin/targetMin*100));
+  var bySubject={};
   sessions.forEach(function(s){
     var t=getTask(s.taskId);if(!t)return;
     var subj=getSubject(t.subjectId);
-    if(!bySubject[subj.id])bySubject[subj.id]={name:subj.name,color:subj.color,min:0,count:0};
-    bySubject[subj.id].min+=s.durationMinutes;bySubject[subj.id].count++;
+    if(!bySubject[subj.id])bySubject[subj.id]={name:subj.name,color:subj.color,min:0,tasks:[]};
+    bySubject[subj.id].min+=s.durationMinutes;
+    var tname=t.name;
+    if(!bySubject[subj.id].tasks.includes(tname))bySubject[subj.id].tasks.push(tname);
   });
-  var subjRows=Object.values(bySubject).sort(function(a,b){return b.min-a.min;}).map(function(sb){
-    return '<tr><td style="padding:8px 12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+sb.color+';margin-right:8px"></span>'+sb.name+'</td><td style="padding:8px 12px;text-align:right;font-family:monospace">'+formatMin(sb.min)+'</td><td style="padding:8px 12px;text-align:right;color:#666">'+sb.count+' session'+(sb.count>1?'s':'')+'</td></tr>';
+  var subjList=Object.values(bySubject).sort(function(a,b){return b.min-a.min;});
+  // Build subject rows for both table and share text
+  var subjTableRows=subjList.map(function(sb){
+    return '<tr><td style="padding:9px 14px;vertical-align:top"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+sb.color+';margin-right:8px;vertical-align:middle"></span><strong>'+sb.name+'</strong><div style="font-size:11px;color:#777;margin-top:3px;padding-left:18px">'+sb.tasks.join(', ')+'</div></td><td style="padding:9px 14px;text-align:right;font-family:monospace;white-space:nowrap;vertical-align:top;font-weight:700">'+formatMin(sb.min)+'</td></tr>';
   }).join('');
-  var sessRows=sessions.map(function(s){
-    var t=getTask(s.taskId);var subj=t?getSubject(t.subjectId):{name:'Unknown',color:'#888'};
-    var confIcon=s.confidenceRating==='struggling'?'Struggling':s.confidenceRating==='ok'?'OK':s.confidenceRating==='confident'?'Confident':'';
-    return '<tr><td style="padding:7px 12px;font-size:13px"><strong>'+(t?t.name:'Unknown')+'</strong><br><span style="color:#888;font-size:11px">'+subj.name+(t&&t.chapter?' - '+t.chapter:'')+'</span></td><td style="padding:7px 12px;text-align:right;font-family:monospace">'+formatMin(s.durationMinutes)+'</td><td style="padding:7px 12px;font-size:12px">'+confIcon+'</td><td style="padding:7px 12px;font-size:12px;color:#888">'+(s.isManual?'Manual':'Timer')+'</td></tr>';
-  }).join('');
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Study Report - Ramadan Day '+targetDay+'</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#fff;color:#1a1a1a}.header{background:linear-gradient(135deg,#0c0c1e,#1a1028);color:#fff;padding:32px 40px}.header h1{font-size:24px;font-weight:700;margin-bottom:4px}.date{color:rgba(255,255,255,0.6);font-size:14px;margin-bottom:20px}.hstats{display:flex;gap:24px;flex-wrap:wrap}.hstat{text-align:center;min-width:60px}.val{font-size:26px;font-weight:700;color:#e8a832;font-family:monospace}.lbl{font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}.pbar{height:6px;background:rgba(255,255,255,0.15);border-radius:3px;margin-top:20px}.pfill{height:100%;background:#e8a832;border-radius:3px;width:'+pct+'%}.plbl{font-size:12px;color:rgba(255,255,255,0.5);margin-top:6px}.body{padding:28px 40px}.sec{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;margin:24px 0 10px}table{width:100%;border-collapse:collapse}th{font-size:11px;color:#888;text-transform:uppercase;padding:6px 12px;text-align:left;border-bottom:2px solid #eee}tr{border-bottom:1px solid #f0f0f0}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center}@media print{body{margin:0}}</style></head><body>';
-  html+='<div class="header"><h1>Study Session Report</h1><div class="date">Ramadan Day '+targetDay+' &nbsp;&middot;&nbsp; '+calStr+'</div><div class="hstats"><div class="hstat"><div class="val">'+formatMin(totalMin)+'</div><div class="lbl">Studied</div></div><div class="hstat"><div class="val">'+sessions.length+'</div><div class="lbl">Sessions</div></div><div class="hstat"><div class="val">'+Object.keys(bySubject).length+'</div><div class="lbl">Subjects</div></div><div class="hstat"><div class="val">'+pct+'%</div><div class="lbl">Goal</div></div></div><div class="pbar"><div class="pfill"></div></div><div class="plbl">'+formatMin(totalMin)+' of '+formatMin(targetMin)+' daily target</div></div>';
-  html+='<div class="body"><div class="sec">By Subject</div><table><thead><tr><th>Subject</th><th style="text-align:right">Time</th><th style="text-align:right">Sessions</th></tr></thead><tbody>'+subjRows+'</tbody></table>';
-  html+='<div class="sec">Session Log</div><table><thead><tr><th>Task</th><th style="text-align:right">Duration</th><th>Confidence</th><th>Type</th></tr></thead><tbody>'+sessRows+'</tbody></table>';
-  html+='<div class="footer">Generated by Ramadan Study Tracker &middot; '+new Date().toLocaleString()+'</div></div></body></html>';
-  var win=window.open('','_blank');win.document.write(html);win.document.close();setTimeout(function(){win.print();},600);
+  var css='*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#1a1a1a;max-width:600px;margin:0 auto}';
+  css+='.header{background:linear-gradient(135deg,#0c0c1e,#1a1028);color:#fff;padding:28px 32px;border-radius:0 0 16px 16px}';
+  css+='.header h1{font-size:20px;font-weight:700;margin-bottom:3px}.date{color:rgba(255,255,255,0.55);font-size:13px;margin-bottom:18px}';
+  css+='.stats{display:flex;gap:0;background:rgba(255,255,255,0.07);border-radius:12px;overflow:hidden}';
+  css+='.stat{flex:1;padding:14px 8px;text-align:center;border-right:1px solid rgba(255,255,255,0.08)}.stat:last-child{border-right:none}';
+  css+='.stat-val{font-size:22px;font-weight:700;color:#e8a832;font-family:monospace;line-height:1}';
+  css+='.stat-lbl{font-size:9px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}';
+  css+='.prog{height:5px;background:rgba(255,255,255,0.12);border-radius:3px;margin-top:16px;overflow:hidden}';
+  css+='.prog-fill{height:100%;background:linear-gradient(90deg,#e8a832,#f4c060);border-radius:3px;width:'+pct+'%}';
+  css+='.prog-lbl{font-size:11px;color:rgba(255,255,255,0.4);margin-top:5px}';
+  css+='.body{padding:24px 28px}.sec-title{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 10px}';
+  css+='table{width:100%;border-collapse:collapse}tr{border-bottom:1px solid #f0f0f0}tr:last-child{border-bottom:none}';
+  css+='.footer{text-align:center;padding:16px;font-size:10px;color:#ccc;border-top:1px solid #f0f0f0;margin-top:16px}';
+  css+='@media print{body{max-width:100%;margin:0}@page{margin:1cm}}';
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Day '+targetDay+' Study Summary</title><style>'+css+'</style></head><body>';
+  html+='<div class="header">';
+  html+='<h1>Ramadan Study — Day '+targetDay+'</h1>';
+  html+='<div class="date">'+calStr+'</div>';
+  html+='<div class="stats"><div class="stat"><div class="stat-val">'+formatMin(totalMin)+'</div><div class="stat-lbl">Total Time</div></div>';
+  html+='<div class="stat"><div class="stat-val">'+sessions.length+'</div><div class="stat-lbl">Sessions</div></div>';
+  html+='<div class="stat"><div class="stat-val">'+subjList.length+'</div><div class="stat-lbl">Subjects</div></div>';
+  html+='<div class="stat"><div class="stat-val">'+pct+'%</div><div class="stat-lbl">Goal</div></div></div>';
+  html+='<div class="prog"><div class="prog-fill"></div></div>';
+  html+='<div class="prog-lbl">'+formatMin(totalMin)+' of '+formatMin(targetMin)+' daily target</div>';
+  html+='</div>';
+  html+='<div class="body"><div class="sec-title">Topics Studied</div>';
+  html+='<table><tbody>'+subjTableRows+'</tbody></table>';
+  html+='<div class="footer">Ramadan Study Tracker &middot; '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})+'</div>';
+  html+='</div></body></html>';
+  // Use Blob URL to avoid popup blocker issues
+  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.target='_blank';
+  a.rel='noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},10000);
+  showToast('Report opened — use Print to save as PDF','info');
 }
 
 function doExportReport(){
@@ -3229,7 +3277,7 @@ function showExportReportModal(){
     <button id="focus-pause-btn" class="btn btn-secondary" onclick="focusPauseResume()">⏸ Pause</button>
     <button class="btn" style="background:rgba(232,92,92,0.15);color:var(--red);border:1px solid rgba(232,92,92,0.25)" onclick="stopTimer();closeFocusMode()">■ Stop</button>
   </div>
-  <div id="focus-quote" class="focus-quote"></div>
+  <div id="focus-quote" class="focus-quote"><div class="focus-quote-text"></div><div class="focus-quote-author"></div></div>
 </div>
 </body>
 </html>
