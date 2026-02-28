@@ -1607,7 +1607,13 @@ function renderTaskCard(task,showStart=false,showSkip=false){
     </div>
     <div class="task-card-bottom">
       ${statusBadge}${confBadge}${deadlineBadge}
-      <span class="task-time">${formatMin(Math.round(remaining))} left</span>
+      <span class="task-time" style="${actual>0&&remaining===0?'color:var(--amber)':''}">${
+        actual>0&&remaining===0
+          ? formatMin(actual)+' studied ('+formatMin(Math.round(actual-task.estimatedMinutes*coeff))+(actual>task.estimatedMinutes*coeff?' over':'')+')'
+          : actual>0
+            ? formatMin(Math.round(remaining))+' left ('+formatMin(actual)+' done)'
+            : formatMin(Math.round(remaining))+' left'
+      }</span>
     </div>
   </div>`;
 }
@@ -1679,13 +1685,21 @@ function renderTasks(){
       content+=`<div class="subject-group" data-subject="${subj.id}" draggable="true"
         ondragstart="onSubjDragStart(event,'${subj.id}')" ondragover="onSubjDragOver(event,'${subj.id}')"
         ondrop="onSubjDrop(event,'${subj.id}')" ondragleave="onSubjDragLeave(event,'${subj.id}')">
-        <div class="subject-group-header">
+        ${(()=>{
+          const subjStudied=state.sessions.filter(s=>{const t=getTask(s.taskId);return t&&t.subjectId===subj.id;}).reduce((a,s)=>a+s.durationMinutes,0);
+          const subjEst=subTasks.reduce((a,t)=>a+t.estimatedMinutes,0);
+          const subjRemain=subTasks.filter(incomplete).reduce((a,t)=>a+Math.max(0,t.estimatedMinutes*getCalibrationCoefficient(subj.id)-taskActualMin(t.id)),0);
+          const overBudget=subjStudied>subjEst;
+          return`<div class="subject-group-header">
           <div class="drag-handle" title="Drag to reorder subject">${DRAG_ICON}</div>
           <div class="subject-group-dot" style="background:${subj.color}"></div>
           <div class="subject-group-name">${subj.name}</div>
           <div class="subject-group-count">${done}/${subTasks.length}</div>
-          <div class="subject-group-prog"><div class="subject-group-prog-fill" style="width:${prog}%;background:${subj.color}"></div></div>
+          <div style="font-size:.68rem;color:${overBudget?'var(--amber)':'var(--text3)'};font-family:var(--font-mono);white-space:nowrap;margin-left:4px">${formatMin(subjStudied)} studied · ${formatMin(Math.round(subjRemain))} left</div>
+          <div class="subject-group-prog" style="flex:1"><div class="subject-group-prog-fill" style="width:${prog}%;background:${subj.color}"></div></div>
+          <button class="btn btn-sm btn-ghost" style="font-size:.6rem;padding:2px 8px;flex-shrink:0;opacity:0.7" onclick="event.stopPropagation();showScaleModal('subject','${subj.id}','${escapedHTML(subj.name)}')" title="Scale all task times in this subject">⚖ Scale</button>
         </div>`;
+        })()}`;
 
       sortedChapters.forEach(ch=>{
         const chTasks=chapters[ch];
@@ -1695,10 +1709,18 @@ function renderTasks(){
             ondragover="onChDragOver(event,'${subj.id}','${escapedHTML(ch)}')"
             ondrop="onChDrop(event,'${subj.id}','${escapedHTML(ch)}')"
             ondragleave="onChDragLeave(event)">
-            <div class="chapter-label">
+            ${(()=>{
+              const chStudied=chTasks.reduce((a,t)=>a+taskActualMin(t.id),0);
+              const chEst=chTasks.reduce((a,t)=>a+t.estimatedMinutes,0);
+              const chRemain=chTasks.filter(incomplete).reduce((a,t)=>a+Math.max(0,t.estimatedMinutes*getCalibrationCoefficient(t.subjectId)-taskActualMin(t.id)),0);
+              const chOver=chStudied>chEst;
+              return`<div class="chapter-label">
               <span class="drag-handle" style="width:18px;height:18px" title="Drag chapter">${DRAG_ICON}</span>
-              ${escapedHTML(ch)}
+              <span style="flex:1">${escapedHTML(ch)}</span>
+              <span style="font-size:.62rem;color:${chOver?'var(--amber)':'var(--text3)'};font-family:var(--font-mono);margin:0 6px">${formatMin(chStudied)}/${formatMin(chEst)}</span>
+              <button class="btn btn-sm btn-ghost" style="font-size:.58rem;padding:2px 7px;opacity:0.7" onclick="event.stopPropagation();showScaleModal('chapter','${subj.id}','${escapedHTML(ch)}')" title="Scale all task times in this chapter">⚖ Scale</button>
             </div>`;
+            })()}`;
         }
         chTasks.forEach(task=>{content+=renderTaskCardDraggable(task);});
         if(ch!=='__none')content+=`</div>`;
@@ -1947,7 +1969,8 @@ function renderStatsSubjects(){
     if(!subTasks.length)return null;
     const done=subTasks.filter(t=>t.status==='completed').length;
     const studiedMin=state.sessions.filter(s=>{const t=getTask(s.taskId);return t&&t.subjectId===subj.id}).reduce((a,s)=>a+s.durationMinutes,0);
-    const estRem=subTasks.filter(incomplete).reduce((a,t)=>a+(Math.max(0,t.estimatedMinutes-taskActualMin(t.id))),0);
+    const estRem=subTasks.filter(incomplete).reduce((a,t)=>a+Math.max(0,t.estimatedMinutes*coeff-taskActualMin(t.id)),0);
+    const overStudied=studiedMin>subTasks.reduce((a2,t)=>a2+t.estimatedMinutes,0);
     const coeff=getCalibrationCoefficient(subj.id);
     const lastStudied=getSubjectLastStudiedDay(subj.id);
     const avoided=getSubjectDaysSinceStudied(subj.id)>=(state.settings.avoidanceThresholdDays||3);
@@ -1955,7 +1978,7 @@ function renderStatsSubjects(){
     return`<tr>
       <td><span class="subject-dot-inline" style="background:${subj.color}"></span>${subj.name}${avoided?'<span class="tag" style="background:var(--amber2);color:var(--amber);margin-left:6px;font-size:.6rem">Avoided</span>':''}</td>
       <td><div style="font-size:.82rem">${done}/${subTasks.length}</div><div class="subj-mini-bar"><div class="subj-mini-bar-fill" style="width:${Math.round(done/subTasks.length*100)}%;background:${subj.color}"></div></div></td>
-      <td class="mono">${fmtHours(studiedMin)}h</td>
+      <td class="mono" style="${overStudied?'color:var(--amber)':''}">${fmtHours(studiedMin)}h${overStudied?'<span style="font-size:.65rem"> over</span>':''}</td>
       <td class="mono">${fmtHours(estRem)}h</td>
       <td class="coeff mono ${coeffClass}">${coeff.toFixed(2)}×<span style="font-size:.65rem;color:var(--text3);margin-left:4px">${coeff>1.1?'taking longer':'faster'}</span></td>
       <td style="font-size:.78rem;color:var(--text3)">${lastStudied?`Day ${lastStudied}`:'Never'}</td>
@@ -2034,6 +2057,158 @@ function renderStatsSessionLog(){
     <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No sessions yet</td></tr>'}</tbody>
   </table></div></div>`;
 }
+
+function renderOnTrack(){
+  const curDay=todayRamadanDay()||studyStartDay();
+  const startDay=studyStartDay();
+  const endDay=studyEndDay();
+  const dr=Math.max(0,endDay-curDay);
+  const targetMin=state.settings.dailyTargetMinutes||480;
+  const targetHrs=targetMin/60;
+  const reqHrs=getRequiredDailyHours();
+  const reqClass=reqHrs<=targetHrs?'green':reqHrs<=targetHrs*1.15?'amber':'red';
+  const totalStudiedAll=state.sessions.reduce((a,s)=>a+s.durationMinutes,0);
+  const totalEstMin=state.tasks.reduce((a,t)=>a+(t.estimatedMinutes||0),0);
+  const totalRemMin=state.tasks.filter(incomplete).reduce((a,t)=>{
+    const coeff=getCalibrationCoefficient(t.subjectId);
+    return a+Math.max(0,t.estimatedMinutes*coeff-taskActualMin(t.id));
+  },0);
+  const daysStudied=[...new Set(state.sessions.map(s=>s.ramadanDay))].length;
+  const avgDailyMin=daysStudied?totalStudiedAll/daysStudied:0;
+  const projectedFinishDay=avgDailyMin>0?curDay+Math.ceil(totalRemMin/avgDailyMin):null;
+  const willFinishOnTime=projectedFinishDay&&projectedFinishDay<=endDay;
+
+  // Per-subject analysis
+  const subjAnalysis=state.subjects.map(subj=>{
+    const subTasks=state.tasks.filter(t=>t.subjectId===subj.id);
+    if(!subTasks.length)return null;
+    const done=subTasks.filter(t=>t.status==='completed').length;
+    const total=subTasks.length;
+    const remTasks=subTasks.filter(incomplete);
+    const coeff=getCalibrationCoefficient(subj.id);
+    const remMin=remTasks.reduce((a,t)=>a+Math.max(0,t.estimatedMinutes*coeff-taskActualMin(t.id)),0);
+    const studiedMin=state.sessions.filter(s=>{const t=getTask(s.taskId);return t&&t.subjectId===subj.id}).reduce((a,s)=>a+s.durationMinutes,0);
+    const lastDay=getSubjectLastStudiedDay(subj.id);
+    const daysSince=getSubjectDaysSinceStudied(subj.id);
+    const minPerDayNeeded=dr>0?remMin/dr:remMin;
+    const minPerDayActual=daysStudied&&studiedMin?studiedMin/daysStudied:0;
+    const behindRatio=minPerDayActual>0?minPerDayNeeded/minPerDayActual:null;
+    const urgency=minPerDayNeeded>targetMin*0.6?'critical':minPerDayNeeded>targetMin*0.3?'high':minPerDayNeeded>0?'normal':'done';
+    const pct=total?Math.round(done/total*100):0;
+
+    // Time reduction suggestions
+    const suggestions=[];
+    if(coeff>1.3)suggestions.push(`You take ${Math.round((coeff-1)*100)}% longer than estimated — consider revising estimates upward`);
+    if(daysSince>=3&&remTasks.length>0)suggestions.push(`Not studied in ${daysSince} days — falling behind on this subject`);
+    if(behindRatio&&behindRatio>2)suggestions.push(`You need ${Math.round(minPerDayNeeded)}m/day but only averaging ${Math.round(minPerDayActual)}m/day`);
+    if(coeff<0.8&&remTasks.length>0)suggestions.push(`Finishing faster than estimated (${coeff.toFixed(2)}×) — you may have more tasks than needed`);
+
+    return{subj,done,total,pct,remMin,studiedMin,lastDay,daysSince,minPerDayNeeded,minPerDayActual,urgency,suggestions,coeff,remTasks};
+  }).filter(Boolean);
+
+  const critical=subjAnalysis.filter(s=>s.urgency==='critical');
+  const behind=subjAnalysis.filter(s=>s.urgency==='high');
+  const onTrack=subjAnalysis.filter(s=>s.urgency==='normal');
+  const done=subjAnalysis.filter(s=>s.urgency==='done');
+
+  function urgencyBadge(u){
+    if(u==='critical')return'<span style="font-size:.65rem;padding:2px 7px;border-radius:4px;background:rgba(232,92,92,0.15);color:var(--red);font-weight:700">⚠ Critical</span>';
+    if(u==='high')return'<span style="font-size:.65rem;padding:2px 7px;border-radius:4px;background:rgba(232,168,50,0.15);color:var(--amber);font-weight:700">Behind</span>';
+    if(u==='normal')return'<span style="font-size:.65rem;padding:2px 7px;border-radius:4px;background:rgba(77,190,140,0.12);color:var(--green);font-weight:700">On Track</span>';
+    return'<span style="font-size:.65rem;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--text3)">Done</span>';
+  }
+
+  const projColor=willFinishOnTime?'var(--green)':projectedFinishDay?'var(--red)':'var(--text3)';
+  const projLabel=projectedFinishDay?`Day ${projectedFinishDay}${willFinishOnTime?` ✓ (${endDay-projectedFinishDay}d early)`:`⚠ (${projectedFinishDay-endDay}d late)`}`:'Not enough data';
+
+  let html=`
+  <!-- STATUS HEADER -->
+  <div class="ontrack-header${willFinishOnTime?' on-time':' at-risk'}">
+    <div class="ontrack-header-icon">${willFinishOnTime?'✅':'⚠️'}</div>
+    <div>
+      <div class="ontrack-header-title">${willFinishOnTime?'On Track \u2713':'You Need to Push'}</div>
+      <div class="ontrack-header-sub">Projected finish: <strong style="color:${projColor}">${projLabel}</strong> · ${formatMin(Math.round(totalRemMin))} remaining across ${state.tasks.filter(incomplete).length} tasks</div>
+    </div>
+  </div>
+
+  <!-- KEY METRICS -->
+  <div class="recap-stat-grid" style="margin-bottom:16px">
+    <div class="recap-stat"><div class="recap-stat-val">${fmtHours(totalStudiedAll)}h</div><div class="recap-stat-lbl">Studied Total</div></div>
+    <div class="recap-stat"><div class="recap-stat-val">${formatMin(Math.round(avgDailyMin))}</div><div class="recap-stat-lbl">Avg Daily</div></div>
+    <div class="recap-stat" style="${reqClass==='red'?'border-color:rgba(232,92,92,0.3)':reqClass==='amber'?'border-color:rgba(232,168,50,0.3)':''}"><div class="recap-stat-val" style="color:var(--${reqClass})">${reqHrs.toFixed(1)}h</div><div class="recap-stat-lbl">Needed Daily</div></div>
+    <div class="recap-stat"><div class="recap-stat-val">${dr}</div><div class="recap-stat-lbl">Days Left</div></div>
+    <div class="recap-stat"><div class="recap-stat-val">${formatMin(Math.round(totalRemMin))}</div><div class="recap-stat-lbl">Work Remaining</div></div>
+    <div class="recap-stat"><div class="recap-stat-val" style="color:${projColor}">${projectedFinishDay?'Day '+projectedFinishDay:'TBD'}</div><div class="recap-stat-lbl">Projected End</div></div>
+  </div>`;
+
+  // Critical subjects
+  if(critical.length){
+    html+=`<div class="ontrack-section" style="border-color:rgba(232,92,92,0.3)">
+    <div class="ontrack-section-title" style="color:var(--red)">⚠ Needs Urgent Attention</div>
+    ${critical.map(s=>subjRow(s)).join('')}</div>`;
+  }
+  if(behind.length){
+    html+=`<div class="ontrack-section" style="border-color:rgba(232,168,50,0.3)">
+    <div class="ontrack-section-title" style="color:var(--amber)">Falling Behind</div>
+    ${behind.map(s=>subjRow(s)).join('')}</div>`;
+  }
+  if(onTrack.length){
+    html+=`<div class="ontrack-section">
+    <div class="ontrack-section-title">On Track</div>
+    ${onTrack.map(s=>subjRow(s)).join('')}</div>`;
+  }
+  if(done.length){
+    html+=`<div class="ontrack-section" style="opacity:0.6">
+    <div class="ontrack-section-title">Completed</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0">
+      ${done.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--text3)"><span style="width:8px;height:8px;border-radius:50%;background:${s.subj.color};display:inline-block"></span>${s.subj.name} ✓</span>`).join('')}
+    </div></div>`;
+  }
+
+  // Global suggestions
+  const globalSuggestions=[];
+  if(reqHrs>targetHrs*1.3)globalSuggestions.push({icon:'🕐',msg:`You need ${reqHrs.toFixed(1)}h/day — consider increasing your daily target to ${Math.ceil(reqHrs)}h`});
+  if(avgDailyMin<targetMin*0.8&&daysStudied>3)globalSuggestions.push({icon:'📈',msg:`Your average is ${formatMin(Math.round(avgDailyMin))}/day vs your ${formatMin(targetMin)} target — consistency is key`});
+  const highCoeffSubjs=subjAnalysis.filter(s=>s.coeff>1.4&&s.remTasks.length>0);
+  if(highCoeffSubjs.length)globalSuggestions.push({icon:'⏱',msg:`${highCoeffSubjs.map(s=>s.subj.name).join(', ')}: tasks taking longer than estimated — plan extra buffer`});
+  const staleSubjs=subjAnalysis.filter(s=>s.daysSince>=4&&s.remTasks.length>0);
+  if(staleSubjs.length)globalSuggestions.push({icon:'🔔',msg:`${staleSubjs.map(s=>s.subj.name).join(', ')} not studied in 4+ days — schedule a session soon`});
+
+  if(globalSuggestions.length){
+    html+=`<div class="ontrack-section"><div class="ontrack-section-title">💡 Recommendations</div>
+    ${globalSuggestions.map(s=>`<div class="ontrack-suggestion"><span class="ontrack-suggestion-icon">${s.icon}</span>${s.msg}</div>`).join('')}
+    </div>`;
+  }
+
+  return html;
+
+  function subjRow(s){
+    const bar=Math.round(s.pct);
+    return`<div class="ontrack-subj">
+      <div class="ontrack-subj-head">
+        <span style="display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:.88rem">
+          <span style="width:10px;height:10px;border-radius:50%;background:${s.subj.color};display:inline-block;flex-shrink:0"></span>
+          ${s.subj.name}
+        </span>
+        ${urgencyBadge(s.urgency)}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+        <div style="flex:1;height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
+          <div style="width:${bar}%;height:100%;background:${s.subj.color};border-radius:3px;transition:width .4s"></div>
+        </div>
+        <span style="font-size:.7rem;color:var(--text3);white-space:nowrap">${s.done}/${s.total} tasks · ${bar}%</span>
+      </div>
+      <div style="display:flex;gap:16px;font-size:.72rem;color:var(--text3);margin-bottom:${s.suggestions.length?'8px':'0'}">
+        <span>${formatMin(Math.round(s.remMin))} remaining</span>
+        <span>${formatMin(Math.round(s.minPerDayNeeded))}/day needed</span>
+        ${s.lastDay?`<span>Last studied Day ${s.lastDay}</span>`:'<span style="color:var(--amber)">Never studied</span>'}
+      </div>
+      ${s.suggestions.map(sg=>`<div style="font-size:.72rem;color:var(--amber);padding:3px 0;padding-left:17px;border-left:2px solid rgba(232,168,50,0.3)">→ ${sg}</div>`).join('')}
+    </div>`;
+  }
+}
+
+function initOnTrackCharts(){}
 
 async function confirmDeleteSession(id){
   if(!confirm('Delete this session?'))return;
@@ -3699,6 +3874,11 @@ function renderOnTrack(){
   }
 
   html+=`</div>`;
+
+  // Rebalancing section
+  html+='<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">';
+  html+=renderRebalancingPanel();
+
   return html;
 }
 
@@ -3995,7 +4175,354 @@ function checkRecapTrigger(){
   }
 }
 
+
+// ============================================================
+// TIME SCALING (chapter-wise and subject-wise)
+// ============================================================
+function showScaleModal(type, subjectId, label) {
+  // type: 'subject' | 'chapter', label = chapter name or subject name
+  var factor = 1.0;
+  var tasks = type === 'subject'
+    ? state.tasks.filter(function(t){ return t.subjectId === subjectId; })
+    : state.tasks.filter(function(t){ return t.subjectId === subjectId && t.chapter === label; });
+
+  var totalEst = tasks.reduce(function(a,t){ return a + t.estimatedMinutes; }, 0);
+  var totalStudied = tasks.reduce(function(a,t){ return a + taskActualMin(t.id); }, 0);
+  var coeff = getCalibrationCoefficient(subjectId);
+  var adjustedTotal = Math.round(totalEst * coeff);
+
+  var html = '<div class="modal-header"><div class="modal-title">Scale Time — ' + escapedHTML(label) + '</div><button class="modal-close" onclick="closeModal()">✕</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div class="form-hint" style="margin-bottom:16px">Multiply all <strong>' + tasks.length + ' task</strong> estimates in this ' + type + ' by a factor. Useful when you realize a subject needs more or less time overall.</div>';
+  html += '<div style="background:var(--surface3);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:.8rem;display:flex;gap:16px;flex-wrap:wrap">';
+  html += '<span>Current total: <strong>' + formatMin(totalEst) + '</strong></span>';
+  html += '<span>Studied: <strong style="color:' + (totalStudied > totalEst ? 'var(--amber)' : 'var(--text2)') + '">' + formatMin(totalStudied) + '</strong></span>';
+  html += '<span>Calibrated: <strong>' + formatMin(adjustedTotal) + '</strong></span>';
+  html += '</div>';
+
+  html += '<div class="form-group"><label class="form-label">Scale Factor</label>';
+  html += '<div style="display:flex;align-items:center;gap:10px">';
+  html += '<input type="range" id="scale-factor-range" min="0.3" max="3.0" step="0.05" value="1.0" style="flex:1" oninput="updateScalePreview()">';
+  html += '<input type="number" id="scale-factor-num" min="0.3" max="3.0" step="0.05" value="1.0" class="form-input" style="width:80px" oninput="syncScaleRange()">';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">';
+  ['0.5','0.7','0.8','0.9','1.1','1.2','1.5','2.0'].forEach(function(v){
+    html += '<button onclick="applyScalePreset(' + v + ')" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.75rem">' + v + '×</button>';
+  });
+  html += '</div></div>';
+  html += '<div id="scale-preview" style="margin-top:14px;padding:12px;background:var(--surface3);border-radius:8px;font-size:.8rem"></div>';
+  html += '</div>';
+  html += '<div class="modal-footer">';
+  html += '<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>';
+  html += '<button class="btn btn-primary" onclick="applyScale(\'' + type + '\',\'' + subjectId + '\',\'' + escapedHTML(label) + '\')">Apply Scale</button>';
+  html += '</div>';
+  openModal(html);
+
+  // Store context
+  window._scaleMeta = { type: type, subjectId: subjectId, label: label, totalEst: totalEst };
+  setTimeout(updateScalePreview, 50);
+}
+
+function updateScalePreview(){
+  var r = document.getElementById('scale-factor-range');
+  var n = document.getElementById('scale-factor-num');
+  if(!r||!n)return;
+  n.value = r.value;
+  renderScalePreview(parseFloat(r.value));
+}
+function syncScaleRange(){
+  var r = document.getElementById('scale-factor-range');
+  var n = document.getElementById('scale-factor-num');
+  if(!r||!n)return;
+  r.value = n.value;
+  renderScalePreview(parseFloat(n.value));
+}
+function applyScalePreset(v){
+  var r=document.getElementById('scale-factor-range');
+  var n=document.getElementById('scale-factor-num');
+  if(r)r.value=v; if(n)n.value=v;
+  renderScalePreview(v);
+}
+function renderScalePreview(factor){
+  var el=document.getElementById('scale-preview');
+  if(!el||!window._scaleMeta)return;
+  var m=window._scaleMeta;
+  var tasks = m.type==='subject'
+    ? state.tasks.filter(function(t){return t.subjectId===m.subjectId;})
+    : state.tasks.filter(function(t){return t.subjectId===m.subjectId&&t.chapter===m.label;});
+  var newTotal=Math.round(tasks.reduce(function(a,t){return a+t.estimatedMinutes;},0)*factor);
+  var diff=newTotal-m.totalEst;
+  var diffStr=(diff>=0?'+':'')+formatMin(diff);
+  var color=diff>0?'var(--amber)':diff<0?'var(--green)':'var(--text2)';
+  el.innerHTML='<strong>Preview:</strong> ' + formatMin(m.totalEst) + ' → <strong>' + formatMin(newTotal) + '</strong> <span style="color:'+color+'">(' + diffStr + ')</span>';
+  el.innerHTML+='<br><span style="color:var(--text3);font-size:.75rem">Each task multiplied by ' + factor.toFixed(2) + '× (rounded to nearest minute)</span>';
+}
+
+async function applyScale(type, subjectId, label){
+  var factorEl=document.getElementById('scale-factor-num');
+  var factor=factorEl?parseFloat(factorEl.value):1.0;
+  if(!factor||factor<=0){showToast('Invalid factor','error');return;}
+  if(factor===1.0){closeModal();return;}
+
+  var tasks = type==='subject'
+    ? state.tasks.filter(function(t){return t.subjectId===subjectId;})
+    : state.tasks.filter(function(t){return t.subjectId===subjectId&&t.chapter===label;});
+
+  var batch=db.batch();
+  tasks.forEach(function(t){
+    var newEst=Math.max(1,Math.round(t.estimatedMinutes*factor));
+    t.estimatedMinutes=newEst;
+    var ref=db.collection('users').doc(state.uid).collection('tasks').doc(t.id);
+    batch.update(ref,{estimatedMinutes:newEst});
+  });
+  await batch.commit();
+  closeModal();
+  playSound('complete');
+  showToast('Scaled ' + tasks.length + ' tasks by ' + factor.toFixed(2) + '×','success');
+  renderView(state.currentView);
+}
+
+// ============================================================
+// INTELLIGENT REBALANCING ENGINE
+// ============================================================
+function computeRebalancingPlan() {
+  var daysLeft = Math.max(1, daysRemaining());
+  var targetMinPerDay = state.settings.dailyTargetMinutes || 480;
+  var totalBudget = daysLeft * targetMinPerDay;
+
+  // Per-subject analysis
+  var subjects = state.subjects.map(function(subj){
+    var tasks = state.tasks.filter(function(t){return t.subjectId===subj.id;});
+    var incompleteTasks = tasks.filter(incomplete);
+    var coeff = getCalibrationCoefficient(subj.id);
+    var studiedMin = state.sessions.filter(function(s){
+      var t=getTask(s.taskId); return t&&t.subjectId===subj.id;
+    }).reduce(function(a,s){return a+s.durationMinutes;},0);
+    var totalEst = incompleteTasks.reduce(function(a,t){return a+t.estimatedMinutes;},0);
+    var calEst = incompleteTasks.reduce(function(a,t){return a+t.estimatedMinutes*coeff;},0);
+    var actualRem = incompleteTasks.reduce(function(a,t){
+      return a+Math.max(0,t.estimatedMinutes*coeff-taskActualMin(t.id));
+    },0);
+    var overRunMin = studiedMin - incompleteTasks.reduce(function(a,t){return a+t.estimatedMinutes;},0);
+    var urgentDeadlines = incompleteTasks.filter(function(t){
+      return t.isDeadlineTask&&t.deadlineDate&&Math.ceil((new Date(t.deadlineDate)-new Date())/86400000)<=7;
+    });
+    var confSess = state.sessions.filter(function(s){
+      var t=getTask(s.taskId); return t&&t.subjectId===subj.id&&s.confidenceRating;
+    });
+    var avgConf = confSess.length ? confSess.reduce(function(a,s){
+      return a+(s.confidenceRating==='confident'?3:s.confidenceRating==='ok'?2:1);
+    },0)/confSess.length : 2;
+    return {
+      subj:subj, tasks:incompleteTasks, studiedMin:studiedMin,
+      totalEst:totalEst, calEst:calEst, actualRem:actualRem,
+      overRunMin:overRunMin, coeff:coeff, avgConf:avgConf,
+      urgentDeadlines:urgentDeadlines,
+      dailyNeeded: daysLeft>0 ? actualRem/daysLeft : actualRem,
+      pctComplete: tasks.length ? Math.round(tasks.filter(function(t){return t.status==='completed';}).length/tasks.length*100) : 100
+    };
+  }).filter(function(s){ return s.tasks.length>0 || s.studiedMin>0; });
+
+  var totalRemaining = subjects.reduce(function(a,s){return a+s.actualRem;},0);
+  var surplus = totalBudget - totalRemaining; // positive = have buffer, negative = overloaded
+  var overloaded = surplus < 0;
+
+  // Categorize subjects
+  var critical = subjects.filter(function(s){
+    return s.urgentDeadlines.length>0 || s.coeff>1.15 || s.avgConf<1.6;
+  });
+  var reducible = subjects.filter(function(s){
+    return s.urgentDeadlines.length===0 && s.coeff<=1.0 && s.avgConf>=2.3
+      && s.pctComplete<90 && s.actualRem>60;
+  }).sort(function(a,b){return b.actualRem-a.actualRem;});
+
+  return {
+    daysLeft:daysLeft, targetMinPerDay:targetMinPerDay, totalBudget:totalBudget,
+    totalRemaining:totalRemaining, surplus:surplus, overloaded:overloaded,
+    subjects:subjects, critical:critical, reducible:reducible
+  };
+}
+
+function renderRebalancingPanel() {
+  var plan = computeRebalancingPlan();
+  var subjects = plan.subjects;
+  var daysLeft = plan.daysLeft;
+
+  var html = '<div style="display:flex;flex-direction:column;gap:20px;padding-top:4px">';
+
+  // Overview status
+  var surplusMin = Math.abs(plan.surplus);
+  var surplusStr = formatMin(Math.round(surplusMin));
+  var statusColor = plan.overloaded ? 'var(--red)' : plan.surplus < plan.targetMinPerDay ? 'var(--amber)' : 'var(--green)';
+  var statusLabel = plan.overloaded
+    ? '⚠️ Overloaded by ' + surplusStr + ' across ' + daysLeft + ' days'
+    : plan.surplus < plan.targetMinPerDay
+    ? '⚠️ Tight schedule — ' + surplusStr + ' buffer'
+    : '✓ On track — ' + surplusStr + ' buffer across ' + daysLeft + ' days';
+
+  html += '<div style="background:rgba(0,0,0,0.25);border:1px solid ' + statusColor + ';border-radius:12px;padding:16px 18px">';
+  html += '<div style="color:' + statusColor + ';font-weight:700;font-size:.95rem;margin-bottom:6px">' + statusLabel + '</div>';
+  html += '<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:.78rem;color:var(--text3)">';
+  html += '<span>Total remaining: <strong style="color:var(--text2)">' + formatMin(Math.round(plan.totalRemaining)) + '</strong></span>';
+  html += '<span>Budget: <strong style="color:var(--text2)">' + formatMin(plan.totalBudget) + '</strong> (' + daysLeft + ' days × ' + formatMin(plan.targetMinPerDay) + ')</span>';
+  html += '</div></div>';
+
+  // Per-subject table with visual bars
+  html += '<div><div class="card-title" style="margin-bottom:12px">📊 Subject Load Analysis</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:6px">';
+  var maxDailyNeeded = Math.max(1, Math.max.apply(null, subjects.map(function(s){return s.dailyNeeded;})));
+  subjects.sort(function(a,b){return b.dailyNeeded-a.dailyNeeded;}).forEach(function(sa){
+    var overRun = sa.studiedMin > sa.totalEst;
+    var confLabel = sa.avgConf>=2.5?'💪':sa.avgConf>=1.8?'🙂':'😓';
+    var barPct = Math.min(100, Math.round(sa.dailyNeeded/maxDailyNeeded*100));
+    var barColor = sa.dailyNeeded > plan.targetMinPerDay*0.4 ? 'var(--red)' : sa.dailyNeeded > plan.targetMinPerDay*0.25 ? 'var(--amber)' : 'var(--green)';
+    html += '<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:11px 14px">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    html += '<span style="width:8px;height:8px;border-radius:50%;background:' + sa.subj.color + ';flex-shrink:0;display:inline-block"></span>';
+    html += '<span style="font-weight:600;font-size:.85rem;flex:1">' + sa.subj.name + '</span>';
+    html += '<span style="font-size:.7rem;color:var(--text3)">' + confLabel + '</span>';
+    if(overRun) html += '<span style="font-size:.65rem;background:rgba(232,168,50,.15);color:var(--amber);padding:2px 7px;border-radius:10px;border:1px solid rgba(232,168,50,.3)">over estimate</span>';
+    html += '<span style="font-size:.75rem;font-family:var(--font-mono);font-weight:600;color:' + barColor + '">' + formatMin(Math.round(sa.dailyNeeded)) + '/day</span>';
+    html += '</div>';
+    html += '<div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:6px">';
+    html += '<div style="height:100%;width:' + barPct + '%;background:' + barColor + ';border-radius:3px;transition:width .4s"></div></div>';
+    html += '<div style="display:flex;gap:12px;font-size:.68rem;color:var(--text3);flex-wrap:wrap">';
+    html += '<span>Studied: ' + formatMin(sa.studiedMin) + '</span>';
+    html += '<span>Remaining: ' + formatMin(Math.round(sa.actualRem)) + '</span>';
+    html += '<span>Coeff: ' + sa.coeff.toFixed(2) + '×</span>';
+    html += '<span>' + sa.tasks.length + ' tasks left</span>';
+    html += '</div></div>';
+  });
+  html += '</div></div>';
+
+  // SMART SUGGESTIONS
+  html += '<div><div class="card-title" style="margin-bottom:12px">💡 Smart Suggestions</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:10px">';
+
+  var suggestionCount = 0;
+
+  // 1. If overloaded, suggest removing time from reducible subjects
+  if(plan.overloaded && plan.reducible.length) {
+    var needToFree = Math.abs(plan.surplus);
+    var freed = 0;
+    var scaleTargets = [];
+    plan.reducible.forEach(function(sa){
+      if(freed >= needToFree) return;
+      var canFree = Math.min(sa.actualRem * 0.25, needToFree - freed); // free up to 25%
+      var newFactor = (sa.actualRem - canFree) / sa.actualRem;
+      if(newFactor >= 0.75) {
+        scaleTargets.push({subj:sa.subj,factor:newFactor.toFixed(2),freed:Math.round(canFree),actualRem:sa.actualRem});
+        freed += canFree;
+      }
+    });
+    if(scaleTargets.length) {
+      html += '<div style="border-left:3px solid var(--red);border-radius:0 8px 8px 0;padding:12px 14px;background:rgba(232,92,92,0.07)">';
+      html += '<div style="font-weight:600;font-size:.85rem;margin-bottom:6px">🔴 Reduce time from lower-priority subjects</div>';
+      html += '<div style="font-size:.78rem;color:var(--text3);margin-bottom:10px">You need to free <strong>' + formatMin(Math.round(needToFree)) + '</strong> across ' + daysLeft + ' days. These subjects have high confidence and no deadlines — safe to trim:</div>';
+      scaleTargets.forEach(function(st){
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+        html += '<span style="width:8px;height:8px;border-radius:50%;background:' + st.subj.color + ';flex-shrink:0;display:inline-block"></span>';
+        html += '<span style="flex:1;font-size:.82rem">' + st.subj.name + '</span>';
+        html += '<span style="font-size:.72rem;color:var(--text3)">' + formatMin(Math.round(st.actualRem)) + ' → ' + formatMin(Math.round(st.actualRem*(parseFloat(st.factor)))) + '</span>';
+        html += '<button onclick="showScaleModal(\'subject\',\'' + st.subj.id + '\',\'' + st.subj.name + '\')" style="background:rgba(232,92,92,0.1);border:1px solid rgba(232,92,92,0.25);color:var(--red);padding:4px 10px;border-radius:7px;cursor:pointer;font-size:.72rem">Scale ' + st.factor + '×</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+      suggestionCount++;
+    }
+  }
+
+  // 2. Subjects taking longer than estimated (coeff > 1.1) — suggest scaling up or reducing scope
+  var slowSubjects = subjects.filter(function(s){return s.coeff>1.1&&s.tasks.length>0;});
+  if(slowSubjects.length) {
+    html += '<div style="border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:12px 14px;background:rgba(232,168,50,0.07)">';
+    html += '<div style="font-weight:600;font-size:.85rem;margin-bottom:6px">🟡 Subjects taking longer than estimated</div>';
+    html += '<div style="font-size:.78rem;color:var(--text3);margin-bottom:8px">These subjects consistently run over estimate. Scaling their estimates up will give you a more accurate picture of remaining work:</div>';
+    slowSubjects.forEach(function(sa){
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+      html += '<span style="width:8px;height:8px;border-radius:50%;background:' + sa.subj.color + ';flex-shrink:0;display:inline-block"></span>';
+      html += '<span style="flex:1;font-size:.82rem">' + sa.subj.name + ' <span style="color:var(--amber)">(×' + sa.coeff.toFixed(2) + ')</span></span>';
+      var suggested = Math.min(sa.coeff, 1.5).toFixed(2);
+      html += '<button onclick="showScaleModal(\'subject\',\'' + sa.subj.id + '\',\'' + sa.subj.name + '\')" style="background:rgba(232,168,50,0.1);border:1px solid rgba(232,168,50,0.25);color:var(--amber);padding:4px 10px;border-radius:7px;cursor:pointer;font-size:.72rem">Scale ×' + suggested + '</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+    suggestionCount++;
+  }
+
+  // 3. Struggling subjects — suggest more time or break into smaller chunks
+  var strugglingSubjects = subjects.filter(function(s){return s.avgConf<1.7&&s.tasks.length>0;});
+  if(strugglingSubjects.length) {
+    html += '<div style="border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:12px 14px;background:rgba(232,168,50,0.07)">';
+    html += '<div style="font-weight:600;font-size:.85rem;margin-bottom:6px">😓 Struggling subjects — allocate more review time</div>';
+    html += '<div style="font-size:.78rem;color:var(--text3);margin-bottom:8px">You\'re consistently struggling in these. Consider scaling up their time or breaking tasks into smaller pieces for more frequent practice:</div>';
+    strugglingSubjects.forEach(function(sa){
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+      html += '<span style="width:8px;height:8px;border-radius:50%;background:' + sa.subj.color + ';flex-shrink:0;display:inline-block"></span>';
+      html += '<span style="flex:1;font-size:.82rem">' + sa.subj.name + '</span>';
+      html += '<button onclick="showScaleModal(\'subject\',\'' + sa.subj.id + '\',\'' + sa.subj.name + '\')" style="background:rgba(155,114,232,0.1);border:1px solid rgba(155,114,232,0.25);color:#9b72e8;padding:4px 10px;border-radius:7px;cursor:pointer;font-size:.72rem">Add more time</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+    suggestionCount++;
+  }
+
+  // 4. Schedule balance suggestion
+  var subjsWithTooMuchDaily = subjects.filter(function(s){return s.dailyNeeded > plan.targetMinPerDay * 0.5;});
+  if(subjsWithTooMuchDaily.length > 1) {
+    html += '<div style="border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 14px;background:rgba(232,168,50,0.05)">';
+    html += '<div style="font-weight:600;font-size:.85rem;margin-bottom:6px">⚖️ Schedule balance suggestion</div>';
+    html += '<div style="font-size:.78rem;color:var(--text3);line-height:1.6">Aim for roughly <strong>50% of daily time to high-priority subjects</strong> (Physics, Chemistry, Biology) and spread the rest. Daily target: ' + formatMin(plan.targetMinPerDay) + ' total.</div>';
+    html += '<div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">';
+    var totalRem2 = plan.totalRemaining;
+    subjects.sort(function(a,b){return b.dailyNeeded-a.dailyNeeded;}).slice(0,6).forEach(function(sa){
+      var idealPct = Math.min(50, Math.round(sa.actualRem/totalRem2*100));
+      var idealMin = Math.round(plan.targetMinPerDay * idealPct / 100);
+      html += '<div style="font-size:.75rem;display:flex;align-items:center;gap:8px">';
+      html += '<span style="width:8px;height:8px;border-radius:50%;background:' + sa.subj.color + ';flex-shrink:0;display:inline-block"></span>';
+      html += '<span style="min-width:100px">' + sa.subj.name + '</span>';
+      html += '<span style="color:var(--text3)">~' + formatMin(idealMin) + '/day (' + idealPct + '% of daily)</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+    suggestionCount++;
+  }
+
+  // 5. If on track and buffer exists
+  if(!plan.overloaded && plan.surplus > plan.targetMinPerDay * 3) {
+    html += '<div style="border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:12px 14px;background:rgba(77,190,140,0.07)">';
+    html += '<div style="font-weight:600;font-size:.85rem;margin-bottom:4px">✅ You have buffer — use it wisely</div>';
+    html += '<div style="font-size:.78rem;color:var(--text3)">You have ' + formatMin(Math.round(plan.surplus)) + ' extra time across the remaining days. Consider using it for revision of struggling topics, or increasing daily caps on subjects you\'re behind on.</div>';
+    html += '</div>';
+    suggestionCount++;
+  }
+
+  if(suggestionCount === 0) {
+    html += '<div style="padding:16px;text-align:center;color:var(--text3);font-size:.85rem">No specific suggestions — your workload looks balanced for the time available.</div>';
+  }
+
+  html += '</div></div>';
+
+  // Quick actions
+  html += '<div><div class="card-title" style="margin-bottom:12px">⚡ Quick Actions</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+  subjects.forEach(function(sa){
+    if(sa.tasks.length === 0) return;
+    html += '<button onclick="showScaleModal(\'subject\',\'' + sa.subj.id + '\',\'' + sa.subj.name + '\')" style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.75rem">';
+    html += '<span style="width:8px;height:8px;border-radius:50%;background:' + sa.subj.color + ';flex-shrink:0;display:inline-block"></span>';
+    html += '⚖ ' + sa.subj.name + '</button>';
+  });
+  html += '</div></div>';
+
+  html += '</div>';
+  return html;
+}
+
 </script>
+
+<div id="recap-overlay">
+  <div id="recap-content"></div>
+</div>
 
 <div id="focus-overlay">
   <button class="focus-exit" onclick="closeFocusMode()">✕ Exit Focus</button>
